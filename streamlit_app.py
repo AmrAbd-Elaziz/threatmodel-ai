@@ -1,13 +1,22 @@
+# ============================================================
+# 1. IMPORTS
+# ============================================================
+
 import json
 import os
 import tempfile
 
 import pandas as pd
 import streamlit as st
+from graphviz import Digraph
 
 from core.reporting import generate_html_report
 from core.service import analyze_architecture
 
+
+# ============================================================
+# 2. PAGE CONFIGURATION
+# ============================================================
 
 st.set_page_config(
     page_title="ThreatModel AI",
@@ -15,6 +24,10 @@ st.set_page_config(
     layout="wide",
 )
 
+
+# ============================================================
+# 3. UI STYLING
+# ============================================================
 
 st.markdown(
     """
@@ -55,6 +68,10 @@ st.markdown(
 )
 
 
+# ============================================================
+# 4. APPLICATION HEADER
+# ============================================================
+
 st.markdown(
     '<div class="tm-title">🧠 ThreatModel AI</div>',
     unsafe_allow_html=True,
@@ -83,6 +100,10 @@ st.markdown(
 )
 
 
+# ============================================================
+# 5. SIDEBAR & INPUT SELECTION
+# ============================================================
+
 st.sidebar.header("Assessment Input")
 
 input_mode = st.sidebar.radio(
@@ -93,6 +114,10 @@ input_mode = st.sidebar.radio(
     ],
 )
 
+
+# ============================================================
+# 6. INPUT PROCESSING & SECURITY ANALYSIS
+# ============================================================
 
 temp_path = None
 
@@ -134,7 +159,6 @@ try:
 
         input_file = temp_path
 
-
     report = analyze_architecture(
         input_file
     )
@@ -148,12 +172,15 @@ try:
         report["summary"]["input_file"] = (
             uploaded_file.name
         )
-
     else:
         report["summary"]["input_file"] = (
             "banking_architecture.yaml"
         )
 
+
+    # ========================================================
+    # 7. ASSESSMENT SUMMARY
+    # ========================================================
 
     st.header(
         summary["architecture"]
@@ -162,7 +189,6 @@ try:
     st.caption(
         "Security Architecture Threat Model"
     )
-
 
     metric_cols = st.columns(6)
 
@@ -196,8 +222,12 @@ try:
         summary["priorities"]["P1"],
     )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 8. ARCHITECTURE OVERVIEW
+    # ========================================================
 
     st.subheader(
         "Architecture Overview"
@@ -234,6 +264,88 @@ try:
         hide_index=True,
     )
 
+
+    # ========================================================
+    # 9. ARCHITECTURE & ATTACK PATH VISUALIZATION
+    # ========================================================
+
+    st.subheader(
+        "Architecture & Attack Paths"
+    )
+
+    st.caption(
+        "Components are grouped conceptually by trust zone. "
+        "Edges represent configured application data flows."
+    )
+
+    graph = Digraph(
+        "threatmodel_architecture"
+    )
+
+    graph.attr(
+        rankdir="LR",
+        bgcolor="transparent",
+        pad="0.4",
+        nodesep="0.6",
+        ranksep="0.8",
+    )
+
+    graph.attr(
+        "node",
+        shape="box",
+        style="rounded,filled",
+        fillcolor="#1e293b",
+        color="#475569",
+        fontcolor="white",
+        fontname="Arial",
+        margin="0.18",
+    )
+
+    graph.attr(
+        "edge",
+        color="#64748b",
+        fontcolor="#94a3b8",
+        fontname="Arial",
+        arrowsize="0.8",
+    )
+
+    for component in architecture[
+        "components"
+    ]:
+        component_label = (
+            f"{component['name']}\n"
+            f"{component['type']}\n"
+            f"Zone: {component['trust_zone']}"
+        )
+
+        graph.node(
+            component["id"],
+            component_label,
+        )
+
+    for flow in architecture[
+        "data_flows"
+    ]:
+        flow_label = flow["protocol"]
+
+        if flow["sensitive_data"]:
+            flow_label += "\nSensitive Data"
+
+        graph.edge(
+            flow["source"],
+            flow["destination"],
+            label=flow_label,
+        )
+
+    st.graphviz_chart(
+        graph,
+        use_container_width=True,
+    )
+
+
+    # ========================================================
+    # 10. DATA FLOW OVERVIEW
+    # ========================================================
 
     st.subheader(
         "Data Flow Overview"
@@ -274,8 +386,12 @@ try:
         hide_index=True,
     )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 11. TRUST BOUNDARY ANALYSIS
+    # ========================================================
 
     st.subheader(
         "Trust Boundary Analysis"
@@ -313,8 +429,12 @@ try:
             "No trust boundary crossings detected."
         )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 12. STRIDE THREAT DISTRIBUTION
+    # ========================================================
 
     st.subheader(
         "STRIDE Threat Distribution"
@@ -326,8 +446,12 @@ try:
                 "category"
             ]
             .value_counts()
-            .rename_axis("Threat Category")
-            .reset_index(name="Count")
+            .rename_axis(
+                "Threat Category"
+            )
+            .reset_index(
+                name="Count"
+            )
         )
 
         st.bar_chart(
@@ -336,6 +460,10 @@ try:
             y="Count",
         )
 
+
+    # ========================================================
+    # 13. RISK PRIORITIZATION
+    # ========================================================
 
     st.subheader(
         "Risk Prioritization"
@@ -367,7 +495,191 @@ try:
     )
 
 
+    # ========================================================
+    # 14. VISUAL 5x5 RISK MATRIX
+    # ========================================================
+
+    st.subheader("5×5 Threat Risk Matrix")
+
+    st.caption(
+        "Threats are positioned by likelihood × impact. "
+        "Colors represent inherent risk severity and the "
+        "number in each cell shows identified threats."
+    )
+
+    matrix_counts = {}
+
+    for threat in threats:
+        position = (
+            threat["likelihood"],
+            threat["impact"],
+        )
+
+        matrix_counts[position] = (
+            matrix_counts.get(position, 0) + 1
+        )
+
+    def matrix_color(score):
+        if score >= 20:
+            return "#7f1d1d"
+
+        if score >= 15:
+            return "#b91c1c"
+
+        if score >= 10:
+            return "#c2410c"
+
+        if score >= 5:
+            return "#a16207"
+
+        return "#166534"
+
+    html = """
+    <div style="
+        display:grid;
+        grid-template-columns:70px repeat(5, 1fr);
+        gap:5px;
+        width:100%;
+        margin-top:20px;
+    ">
+    """
+
+    html += """
+    <div></div>
+    """
+
+    for impact in range(1, 6):
+        html += f"""
+        <div style="
+            text-align:center;
+            font-weight:700;
+            padding:8px;
+        ">
+            Impact {impact}
+        </div>
+        """
+
+    for likelihood in range(5, 0, -1):
+
+        html += f"""
+        <div style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:700;
+        ">
+            L{likelihood}
+        </div>
+        """
+
+        for impact in range(1, 6):
+            score = likelihood * impact
+
+            count = matrix_counts.get(
+                (likelihood, impact),
+                0,
+            )
+
+            background = matrix_color(
+                score
+            )
+
+            html += f"""
+            <div style="
+                background:{background};
+                border:1px solid #475569;
+                border-radius:8px;
+                min-height:80px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+            ">
+                <div style="
+                    font-size:13px;
+                    opacity:0.8;
+                ">
+                    {score}/25
+                </div>
+
+                <div style="
+                    font-size:28px;
+                    font-weight:800;
+                ">
+                    {count}
+                </div>
+
+                <div style="
+                    font-size:11px;
+                    opacity:0.75;
+                ">
+                    threat{"s" if count != 1 else ""}
+                </div>
+            </div>
+            """
+
+    html += "</div>"
+
+    html += """
+    <div style="
+        text-align:center;
+        margin-top:12px;
+        font-weight:600;
+    ">
+        Impact →
+    </div>
+    """
+
+    st.markdown(
+        html,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("#### Highest-Risk Positions")
+
+    sorted_positions = sorted(
+        matrix_counts.items(),
+        key=lambda item:
+            item[0][0] * item[0][1],
+        reverse=True,
+    )
+
+    for (
+        likelihood,
+        impact,
+    ), count in sorted_positions:
+
+        score = likelihood * impact
+
+        matching_threats = [
+            threat
+            for threat in threats
+            if threat["likelihood"] == likelihood
+            and threat["impact"] == impact
+        ]
+
+        with st.expander(
+            f"L{likelihood} × I{impact} "
+            f"= {score}/25 "
+            f"— {count} threat"
+            f"{'s' if count != 1 else ''}",
+            expanded=(score >= 20),
+        ):
+            for threat in matching_threats:
+                st.markdown(
+                    f"**{threat['category']} → "
+                    f"{threat['target']}**  \n"
+                    f"{threat['priority']} · "
+                    f"{threat['severity']} · "
+                    f"Projected residual: "
+                    f"{threat['residual_risk']}/25"
+                )
+
     st.divider()
+
+    # ========================================================
+    # 15. TOP THREATS & ATTACK SCENARIOS
+    # ========================================================
 
     st.subheader(
         "Top Threats"
@@ -435,8 +747,12 @@ try:
                 f"{threat['residual_severity']}"
             )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 16. THREAT REGISTER & FILTERING
+    # ========================================================
 
     st.subheader(
         "Threat Register"
@@ -450,7 +766,9 @@ try:
                 "Threat": threat[
                     "category"
                 ],
-                "Target": threat["target"],
+                "Target": threat[
+                    "target"
+                ],
                 "Priority": threat[
                     "priority"
                 ],
@@ -460,7 +778,9 @@ try:
                 "Likelihood": threat[
                     "likelihood"
                 ],
-                "Impact": threat["impact"],
+                "Impact": threat[
+                    "impact"
+                ],
                 "Inherent Risk": threat[
                     "inherent_risk"
                 ],
@@ -529,8 +849,12 @@ try:
         hide_index=True,
     )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 17. REPORT GENERATION & DOWNLOADS
+    # ========================================================
 
     st.subheader(
         "Assessment Reports"
@@ -567,8 +891,12 @@ try:
         use_container_width=True,
     )
 
-
     st.divider()
+
+
+    # ========================================================
+    # 18. FOOTER
+    # ========================================================
 
     st.caption(
         "ThreatModel AI — Architecture Threat Modeling "
@@ -576,6 +904,10 @@ try:
         "data is used in the built-in banking scenario."
     )
 
+
+# ============================================================
+# 19. TEMPORARY FILE CLEANUP
+# ============================================================
 
 finally:
     if temp_path and os.path.exists(

@@ -70,3 +70,11 @@ data_flows:
     encrypted: true
     authentication: true
     sensitive_data: true
+
+  - id: flow-005
+    source: api-gateway
+    destination: auth-service
+    protocol: HTTPS
+    encrypted: true
+    authentication: true
+    sensitive_data: true

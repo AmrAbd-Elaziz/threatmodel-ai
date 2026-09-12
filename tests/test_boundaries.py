@@ -11,7 +11,7 @@ def test_detect_trust_boundaries():
         architecture
     )
 
-    assert len(boundaries) == 4
+    assert len(boundaries) == 5
 
 
 def test_internet_to_dmz_boundary():
@@ -48,4 +48,4 @@ def test_sensitive_data_crosses_boundaries():
         if boundary["sensitive_data"]
     ]
 
-    assert len(sensitive) == 4
+    assert len(sensitive) == 5

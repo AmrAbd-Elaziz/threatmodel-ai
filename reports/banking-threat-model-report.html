@@ -104,17 +104,17 @@ production control effectiveness.
 
 <div class="card">
 <div>Data Flows</div>
-<div class="value">4</div>
+<div class="value">5</div>
 </div>
 
 <div class="card">
 <div>Trust Boundaries</div>
-<div class="value">4</div>
+<div class="value">5</div>
 </div>
 
 <div class="card">
 <div>Threats</div>
-<div class="value">7</div>
+<div class="value">9</div>
 </div>
 
 <div class="card">
@@ -129,8 +129,8 @@ production control effectiveness.
 
 <p>
 P1: 1 |
-P2: 3 |
-P3: 3 |
+P2: 4 |
+P3: 4 |
 P4: 0 |
 P5: 0
 </p>
@@ -204,6 +204,15 @@ residual risk.
             <td>True</td>
         </tr>
         
+        <tr>
+            <td>flow-005</td>
+            <td>dmz</td>
+            <td>application</td>
+            <td>True</td>
+            <td>True</td>
+            <td>True</td>
+        </tr>
+        
 </tbody>
 </table>
 </div>
@@ -272,6 +281,17 @@ residual risk.
         </tr>
         
         <tr>
+            <td>Elevation of Privilege</td>
+            <td>auth-service</td>
+            <td>P2</td>
+            <td>HIGH</td>
+            <td>15/25</td>
+            <td>6/25</td>
+            <td>LOW</td>
+            <td>Least Privilege, Authorization Enforcement</td>
+        </tr>
+        
+        <tr>
             <td>Tampering</td>
             <td>customer-db</td>
             <td>P3</td>
@@ -296,6 +316,17 @@ residual risk.
         <tr>
             <td>Tampering</td>
             <td>payment-provider</td>
+            <td>P3</td>
+            <td>MEDIUM</td>
+            <td>8/25</td>
+            <td>4/25</td>
+            <td>LOW</td>
+            <td>Integrity Protection, Input Validation</td>
+        </tr>
+        
+        <tr>
+            <td>Tampering</td>
+            <td>auth-service</td>
             <td>P3</td>
             <td>MEDIUM</td>
             <td>8/25</td>

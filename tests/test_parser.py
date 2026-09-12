@@ -11,7 +11,7 @@ def test_load_banking_architecture():
     )
 
     assert len(architecture.components) == 6
-    assert len(architecture.data_flows) == 4
+    assert len(architecture.data_flows) == 5
 
 
 def test_sensitive_database_exists():

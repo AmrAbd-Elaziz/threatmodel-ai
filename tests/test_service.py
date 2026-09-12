@@ -9,9 +9,9 @@ def test_analyze_architecture():
     summary = report["summary"]
 
     assert summary["components"] == 6
-    assert summary["data_flows"] == 4
-    assert summary["trust_boundaries"] == 4
-    assert summary["threats"] == 7
+    assert summary["data_flows"] == 5
+    assert summary["trust_boundaries"] == 5
+    assert summary["threats"] == 9
 
 
 def test_highest_risk():
@@ -34,8 +34,8 @@ def test_priority_summary():
     ]
 
     assert priorities["P1"] == 1
-    assert priorities["P2"] == 3
-    assert priorities["P3"] == 3
+    assert priorities["P2"] == 4
+    assert priorities["P3"] == 4
 
 
 def test_report_sections_exist():
