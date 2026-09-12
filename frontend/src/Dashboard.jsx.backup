@@ -1,0 +1,653 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Boxes,
+  Database,
+  FileWarning,
+  GitBranch,
+  LayoutDashboard,
+  Network,
+  RefreshCcw,
+  Route,
+  Shield,
+  ShieldCheck,
+  Waypoints,
+} from "lucide-react";
+
+import { Link } from "react-router-dom";
+
+import "./index.css";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+  danger = false,
+}) {
+  return (
+    <div className={`metric-card ${danger ? "danger" : ""}`}>
+      <div className="metric-icon">
+        <Icon size={20} />
+      </div>
+
+      <div className="metric-content">
+        <span className="metric-label">{label}</span>
+        <strong>{value}</strong>
+        <small>{subtext}</small>
+      </div>
+    </div>
+  );
+}
+
+function SidebarItem({
+  icon: Icon,
+  label,
+  to,
+  active = false,
+}) {
+  return (
+    <Link
+      to={to}
+      className={`nav-item ${active ? "active" : ""}`}
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function Dashboard() {
+  const [report, setReport] = useState(null);
+  const [remediated, setRemediated] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadAssessment() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [baselineResponse, remediatedResponse] =
+        await Promise.all([
+          fetch(`${API_BASE}/api/demo/banking`),
+          fetch(
+            `${API_BASE}/api/demo/banking/remediated`
+          ),
+        ]);
+
+      if (
+        !baselineResponse.ok ||
+        !remediatedResponse.ok
+      ) {
+        throw new Error(
+          "ThreatModel API returned an error."
+        );
+      }
+
+      const baselineData =
+        await baselineResponse.json();
+
+      const remediatedData =
+        await remediatedResponse.json();
+
+      setReport(baselineData);
+      setRemediated(remediatedData);
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to connect to ThreatModel API."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAssessment();
+  }, []);
+
+  const highestPath = useMemo(() => {
+    if (!report?.attack_paths?.length) {
+      return null;
+    }
+
+    return [...report.attack_paths].sort(
+      (a, b) =>
+        (b.path_risk || 0) -
+        (a.path_risk || 0)
+    )[0];
+  }, [report]);
+
+  const findings = report?.findings || [];
+
+  const baselineCoverage =
+    highestPath?.control_summary
+      ?.coverage_percentage ?? 0;
+
+  const baselineResidual =
+    highestPath?.residual_path_risk ?? 0;
+
+  const remediatedHighestPath = useMemo(() => {
+    if (!remediated?.attack_paths?.length) {
+      return null;
+    }
+
+    return [...remediated.attack_paths].sort(
+      (a, b) =>
+        (b.path_risk || 0) -
+        (a.path_risk || 0)
+    )[0];
+  }, [remediated]);
+
+  const currentCoverage =
+    remediatedHighestPath?.control_summary
+      ?.coverage_percentage ?? 0;
+
+  const currentResidual =
+    remediatedHighestPath?.residual_path_risk ?? 0;
+
+  const summary = report?.summary || {};
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <img
+            src="/threatmodel-logo.png"
+            alt="ThreatModel AI"
+          />
+
+          <div>
+            <div className="brand-name">
+              ThreatModel<span>AI</span>
+            </div>
+
+            <div className="brand-subtitle">
+              Security Engineering
+            </div>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <SidebarItem
+            icon={LayoutDashboard}
+            label="Dashboard"
+            to="/"
+            active
+          />
+
+          <SidebarItem
+            icon={Network}
+            label="Architecture"
+            to="/architecture"
+          />
+
+          <SidebarItem
+            icon={AlertTriangle}
+            label="Threats"
+            to="/threats"
+          />
+
+          <SidebarItem
+            icon={Route}
+            label="Attack Paths"
+            to="/attack-paths"
+          />
+
+          <SidebarItem
+            icon={ShieldCheck}
+            label="Controls"
+            to="/controls"
+          />
+
+          <SidebarItem
+            icon={FileWarning}
+            label="Findings"
+            to="/findings"
+          />
+
+          <SidebarItem
+            icon={RefreshCcw}
+            label="Reassessment"
+            to="/reassessment"
+          />
+
+          <SidebarItem
+            icon={Activity}
+            label="Reports"
+            to="/reports"
+          />
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="status-dot" />
+
+          <div>
+            <strong>Engine Online</strong>
+            <span>
+              Deterministic analysis
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">
+              Architecture Security Intelligence
+            </p>
+
+            <h1>
+              ThreatModel
+              <span> AI</span>
+            </h1>
+          </div>
+
+          <button
+            className="run-button"
+            onClick={loadAssessment}
+          >
+            <RefreshCcw size={17} />
+            Run Assessment
+          </button>
+        </header>
+
+        <section className="hero-panel">
+          <div>
+            <p className="eyebrow">
+              Continuous Threat Modeling
+            </p>
+
+            <h2>
+              Turn Architecture Into{" "}
+              <span>Security Decisions.</span>
+            </h2>
+
+            <p>
+              Architecture-driven threat
+              modeling, attack-path analysis,
+              control assessment, findings and
+              continuous reassessment.
+            </p>
+          </div>
+
+          <div className="version-pill">
+            V2 Security Platform
+          </div>
+        </section>
+
+        {loading && (
+          <div className="state-panel">
+            Loading security assessment…
+          </div>
+        )}
+
+        {error && (
+          <div className="state-panel error">
+            <strong>
+              Unable to load assessment
+            </strong>
+
+            <span>{error}</span>
+
+            <small>
+              Make sure FastAPI is running on
+              port 8000.
+            </small>
+          </div>
+        )}
+
+        {!loading && !error && report && (
+          <>
+            <section className="section-header">
+              <div>
+                <p className="eyebrow">
+                  Current Assessment
+                </p>
+
+                <h2>
+                  {summary.architecture}
+                </h2>
+              </div>
+            </section>
+
+            <section className="metrics-grid">
+              <MetricCard
+                icon={Boxes}
+                label="Components"
+                value={summary.components}
+                subtext="Architecture assets"
+              />
+
+              <MetricCard
+                icon={Waypoints}
+                label="Data Flows"
+                value={summary.data_flows}
+                subtext="Application flows"
+              />
+
+              <MetricCard
+                icon={GitBranch}
+                label="Trust Boundaries"
+                value={summary.trust_boundaries}
+                subtext="Security zones"
+              />
+
+              <MetricCard
+                icon={Shield}
+                label="Threats"
+                value={summary.threats}
+                subtext="STRIDE findings"
+              />
+
+              <MetricCard
+                icon={AlertTriangle}
+                label="Highest Risk"
+                value={`${summary.highest_risk}/25`}
+                subtext="Threat risk"
+                danger
+              />
+
+              <MetricCard
+                icon={FileWarning}
+                label="P1 Threats"
+                value={
+                  summary.priorities?.P1 ?? 0
+                }
+                subtext="Critical priority"
+                danger
+              />
+            </section>
+
+            <section className="primary-grid">
+              <article className="panel architecture-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">
+                      Architecture
+                    </p>
+
+                    <h3>
+                      System Components
+                    </h3>
+                  </div>
+
+                  <Network size={20} />
+                </div>
+
+                <div className="architecture-flow">
+                  {report.architecture.components.map(
+                    (component) => (
+                      <div
+                        className={
+                          component.stores_sensitive_data
+                            ? "architecture-node critical"
+                            : component.internet_exposed
+                              ? "architecture-node exposed"
+                              : "architecture-node"
+                        }
+                        key={component.id}
+                      >
+                        <span>
+                          {component.type}
+                        </span>
+
+                        <strong>
+                          {component.name}
+                        </strong>
+
+                        <small>
+                          Zone:{" "}
+                          {component.trust_zone}
+                        </small>
+                      </div>
+                    )
+                  )}
+                </div>
+              </article>
+
+              <article className="panel attack-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">
+                      Highest Risk
+                    </p>
+
+                    <h3>
+                      Attack Path
+                    </h3>
+                  </div>
+
+                  <div className="critical-badge">
+                    CRITICAL
+                  </div>
+                </div>
+
+                {highestPath && (
+                  <>
+                    <div className="risk-score">
+                      <strong>
+                        {highestPath.path_risk}
+                      </strong>
+                      <span>/25</span>
+                    </div>
+
+                    <p className="risk-label">
+                      Inherent Path Risk
+                    </p>
+
+                    <div className="path-chain">
+                      {highestPath.nodes.map(
+                        (node, index) => (
+                          <div
+                            className="path-item"
+                            key={node}
+                          >
+                            <span>{node}</span>
+
+                            {index <
+                              highestPath.nodes
+                                .length -
+                                1 && (
+                              <b>→</b>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    <div className="attack-meta">
+                      <div>
+                        <span>
+                          Entry Point
+                        </span>
+                        <strong>
+                          {
+                            highestPath.entry_point
+                          }
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Critical Asset
+                        </span>
+                        <strong>
+                          {
+                            highestPath.critical_asset
+                          }
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Residual Risk
+                        </span>
+                        <strong>
+                          {
+                            highestPath.residual_path_risk
+                          }
+                          /25
+                        </strong>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </article>
+            </section>
+
+            <section className="secondary-grid">
+              <article className="panel comparison-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">
+                      Continuous Assessment
+                    </p>
+
+                    <h3>
+                      Security Posture Trend
+                    </h3>
+                  </div>
+
+                  <RefreshCcw size={20} />
+                </div>
+
+                <div className="comparison-grid">
+                  <div className="comparison-card">
+                    <span>
+                      Control Coverage
+                    </span>
+
+                    <div>
+                      <strong>
+                        {baselineCoverage}%
+                      </strong>
+
+                      <b>→</b>
+
+                      <strong className="good">
+                        {currentCoverage}%
+                      </strong>
+                    </div>
+
+                    <small>
+                      Baseline → Remediated
+                    </small>
+                  </div>
+
+                  <div className="comparison-card">
+                    <span>
+                      Residual Risk
+                    </span>
+
+                    <div>
+                      <strong>
+                        {baselineResidual}/25
+                      </strong>
+
+                      <b>→</b>
+
+                      <strong className="good">
+                        {currentResidual}/25
+                      </strong>
+                    </div>
+
+                    <small>
+                      Estimated path risk
+                    </small>
+                  </div>
+
+                  <div className="comparison-card">
+                    <span>
+                      Findings
+                    </span>
+
+                    <div>
+                      <strong>
+                        {findings.length}
+                      </strong>
+
+                      <b>→</b>
+
+                      <strong className="good">
+                        {
+                          remediated?.findings
+                            ?.length ?? 0
+                        }
+                      </strong>
+                    </div>
+
+                    <small>
+                      Open after remediation
+                    </small>
+                  </div>
+                </div>
+              </article>
+
+              <article className="panel findings-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">
+                      Remediation
+                    </p>
+
+                    <h3>
+                      Recent Findings
+                    </h3>
+                  </div>
+
+                  <Database size={20} />
+                </div>
+
+                <div className="findings-table">
+                  <div className="table-row table-head">
+                    <span>Finding</span>
+                    <span>Control</span>
+                    <span>Owner</span>
+                    <span>Priority</span>
+                  </div>
+
+                  {findings
+                    .slice(0, 5)
+                    .map((finding) => (
+                      <div
+                        className="table-row"
+                        key={finding.id}
+                      >
+                        <span>
+                          {finding.id}
+                        </span>
+
+                        <span>
+                          {
+                            finding.control_name
+                          }
+                        </span>
+
+                        <span>
+                          {finding.owner}
+                        </span>
+
+                        <span
+                          className="priority-pill"
+                        >
+                          {finding.priority}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </article>
+            </section>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default Dashboard;

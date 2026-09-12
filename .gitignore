@@ -1,0 +1,32 @@
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# ThreatModel runtime database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Windows alternate data streams
+*:Zone.Identifier
+
+# Local development files
+.venv/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+
+# Frontend generated files
+frontend/node_modules/
+frontend/dist/
+
+# Local backup files
+*.before-*
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

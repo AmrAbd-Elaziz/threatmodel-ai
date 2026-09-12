@@ -1,0 +1,1134 @@
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { Link } from "react-router-dom";
+
+import {
+  Activity,
+  AlertTriangle,
+  Crosshair,
+  Eye,
+  FileWarning,
+  Gauge,
+  Flag,
+  Shield,
+  LayoutDashboard,
+  Layers3,
+  Network,
+  Radar,
+  RefreshCcw,
+  Search,
+  Route,
+  ShieldAlert,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+
+import Footer from "./Footer";
+import Sidebar from "./Sidebar";
+import SharedHeader from "./SharedHeader";
+
+import { getCurrentAssessment } from "./assessmentStore";
+
+import "./index.css";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+const STRIDE_COLORS = {
+  Spoofing: "#4ea8ff",
+  Tampering: "#7d7bff",
+  Repudiation: "#b26bff",
+  "Information Disclosure": "#21c8d8",
+  "Denial of Service": "#ff9d3d",
+  "Elevation of Privilege": "#ff4866",
+};
+
+function SidebarItem({
+  icon: Icon,
+  label,
+  to,
+  active = false,
+}) {
+  return (
+    <Link
+      to={to}
+      className={`nav-item ${active ? "active" : ""}`}
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function Threats() {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [priorityFilter, setPriorityFilter] =
+    useState("ALL");
+
+  const [severityFilter, setSeverityFilter] =
+    useState("ALL");
+
+  const [categoryFilter, setCategoryFilter] =
+    useState("ALL");
+
+  const [searchQuery, setSearchQuery] =
+    useState("");
+
+  async function loadThreats() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setReport(currentAssessment);
+        return;
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/demo/banking`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "ThreatModel API returned an error."
+        );
+      }
+
+      setReport(await response.json());
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to load threat analysis."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadThreats();
+  }, []);
+
+  const threats = report?.threats || [];
+
+  const categories = useMemo(
+    () => [
+      ...new Set(
+        threats.map(
+          (threat) => threat.category
+        )
+      ),
+    ],
+    [threats]
+  );
+
+  const filteredThreats = useMemo(() => {
+    return threats.filter((threat) => {
+      const priorityMatch =
+        priorityFilter === "ALL" ||
+        threat.priority === priorityFilter;
+
+      const severityMatch =
+        severityFilter === "ALL" ||
+        threat.severity === severityFilter;
+
+      const categoryMatch =
+        categoryFilter === "ALL" ||
+        threat.category === categoryFilter;
+
+      const query =
+        searchQuery.trim().toLowerCase();
+
+      const searchMatch =
+        !query ||
+        [
+          threat.category,
+          threat.target,
+          threat.flow_id,
+          threat.description,
+        ].some((value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(query)
+        );
+
+      return (
+        priorityMatch &&
+        severityMatch &&
+        categoryMatch &&
+        searchMatch
+      );
+    });
+  }, [
+    threats,
+    priorityFilter,
+    severityFilter,
+    categoryFilter,
+    searchQuery,
+  ]);
+
+  const strideDistribution = useMemo(() => {
+    const result = {};
+
+    threats.forEach((threat) => {
+      result[threat.category] =
+        (result[threat.category] || 0) + 1;
+    });
+
+    return result;
+  }, [threats]);
+
+  const riskMatrix = useMemo(() => {
+    const matrix = {};
+
+    threats.forEach((threat) => {
+      const key =
+        `${threat.likelihood}-${threat.impact}`;
+
+      matrix[key] =
+        (matrix[key] || 0) + 1;
+    });
+
+    return matrix;
+  }, [threats]);
+
+  const criticalCount = threats.filter(
+    (threat) =>
+      threat.severity === "CRITICAL"
+  ).length;
+
+  const highCount = threats.filter(
+    (threat) =>
+      threat.severity === "HIGH"
+  ).length;
+
+  const p1Count = threats.filter(
+    (threat) =>
+      threat.priority === "P1"
+  ).length;
+
+  const averageResidual =
+    threats.length > 0
+      ? (
+          threats.reduce(
+            (total, threat) =>
+              total +
+              (threat.residual_risk || 0),
+            0
+          ) / threats.length
+        ).toFixed(1)
+      : "0.0";
+
+  const topThreats = useMemo(
+    () =>
+      [...threats]
+        .sort(
+          (a, b) =>
+            (b.inherent_risk || 0) -
+            (a.inherent_risk || 0)
+        )
+        .slice(0, 4),
+    [threats]
+  );
+
+  const highestThreat = topThreats[0] || null;
+
+  const dominantCategory = useMemo(() => {
+    const entries = Object.entries(
+      strideDistribution
+    );
+
+    if (!entries.length) {
+      return null;
+    }
+
+    return entries.sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+  }, [strideDistribution]);
+
+  const donutGradient = useMemo(() => {
+    const entries = Object.entries(
+      strideDistribution
+    );
+
+    if (!entries.length || !threats.length) {
+      return "#152331";
+    }
+
+    let start = 0;
+
+    const segments = entries.map(
+      ([category, count]) => {
+        const percentage =
+          (count / threats.length) * 100;
+
+        const end =
+          start + percentage;
+
+        const color =
+          STRIDE_COLORS[category] ||
+          "#4ea8ff";
+
+        const segment =
+          `${color} ${start}% ${end}%`;
+
+        start = end;
+
+        return segment;
+      }
+    );
+
+    return `conic-gradient(${segments.join(
+      ", "
+    )})`;
+  }, [strideDistribution, threats.length]);
+
+  const riskBands = useMemo(() => {
+    const counts = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    };
+
+    threats.forEach((threat) => {
+      const score = threat.inherent_risk || 0;
+
+      if (score >= 20) {
+        counts.critical += 1;
+      } else if (score >= 15) {
+        counts.high += 1;
+      } else if (score >= 10) {
+        counts.medium += 1;
+      } else {
+        counts.low += 1;
+      }
+    });
+
+    return counts;
+  }, [threats]);
+
+  function getRiskClass(
+    likelihood,
+    impact
+  ) {
+    const score =
+      likelihood * impact;
+
+    if (score >= 20) {
+      return "matrix-critical";
+    }
+
+    if (score >= 15) {
+      return "matrix-high";
+    }
+
+    if (score >= 10) {
+      return "matrix-medium";
+    }
+
+    if (score >= 5) {
+      return "matrix-low";
+    }
+
+    return "matrix-info";
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+
+      <main className="main-content page-with-footer">
+
+        <SharedHeader />
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">
+              STRIDE Security Analysis
+            </p>
+
+            <h1>
+              Threat
+              <span> Intelligence</span>
+            </h1>
+          </div>
+
+          <button
+            className="run-button"
+            onClick={loadThreats}
+          >
+            <RefreshCcw size={17} />
+            Refresh Threats
+          </button>
+        </header>
+
+        <section className="threats-v2-hero">
+          <div>
+            <p className="eyebrow">
+              Threat Landscape
+            </p>
+
+            <h2>
+              Architecture Threat Analysis
+            </h2>
+
+            <p>
+              Prioritize architecture threats
+              through STRIDE classification,
+              likelihood, impact, inherent risk
+              and projected residual risk.
+            </p>
+          </div>
+
+          <div className="threats-v2-model">
+            <Radar size={17} />
+            STRIDE MODEL
+          </div>
+        </section>
+
+        {loading && (
+          <div className="state-panel">
+            Loading threat analysis…
+          </div>
+        )}
+
+        {error && (
+          <div className="state-panel error">
+            <strong>
+              Unable to load threats
+            </strong>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {!loading &&
+          !error &&
+          report && (
+            <>
+              <section className="threats-v2-kpis">
+                <article className="threats-v2-kpi">
+                  <div className="kpi-icon-box blue">
+                    <Shield />
+                  </div>
+
+                  <div className="kpi-copy">
+                    <span>Total Threats</span>
+                    <strong>{threats.length}</strong>
+                    <small>Across architecture components</small>
+                  </div>
+
+                  <div className="kpi-mini-line blue-line" />
+                </article>
+
+                <article className="threats-v2-kpi danger">
+                  <div className="kpi-icon-box red">
+                    <AlertTriangle />
+                  </div>
+
+                  <div className="kpi-copy">
+                    <span>Critical Threats</span>
+                    <strong>{criticalCount}</strong>
+                    <small>Requires immediate attention</small>
+                  </div>
+
+                  <div className="kpi-mini-line red-line" />
+                </article>
+
+                <article className="threats-v2-kpi warning">
+                  <div className="kpi-icon-box orange">
+                    <ShieldAlert />
+                  </div>
+
+                  <div className="kpi-copy">
+                    <span>High Severity</span>
+                    <strong>{highCount}</strong>
+                    <small>Significant risk to address</small>
+                  </div>
+
+                  <div className="kpi-mini-line orange-line" />
+                </article>
+
+                <article className="threats-v2-kpi danger">
+                  <div className="kpi-icon-box red">
+                    <Flag />
+                  </div>
+
+                  <div className="kpi-copy">
+                    <span>P1 Threats</span>
+                    <strong>{p1Count}</strong>
+                    <small>Top priority remediation</small>
+                  </div>
+
+                  <div className="kpi-mini-bars">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                </article>
+
+                <article className="threats-v2-kpi residual">
+                  <div className="kpi-icon-box green">
+                    <Gauge />
+                  </div>
+
+                  <div className="kpi-copy">
+                    <span>Avg. Residual Risk</span>
+
+                    <strong>
+                      {averageResidual}
+                      <em>/25</em>
+                    </strong>
+
+                    <small>After existing controls</small>
+                  </div>
+
+                  <div className="kpi-mini-line green-line" />
+                </article>
+              </section>
+
+              <section className="threats-v2-workspace">
+                <div className="threats-v2-primary">
+                  <article className="panel threats-v2-distribution">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">
+                          STRIDE Intelligence
+                        </p>
+
+                        <h3>
+                          Threat Distribution
+                        </h3>
+                      </div>
+
+                      <Target size={20} />
+                    </div>
+
+                    <div className="threats-v2-distribution-body">
+                      <div
+                        className="threats-v2-donut"
+                        style={{
+                          background:
+                            donutGradient,
+                        }}
+                      >
+                        <div className="threats-v2-donut-center">
+                          <strong>
+                            {threats.length}
+                          </strong>
+                          <span>
+                            THREATS
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="threats-v2-stride-legend">
+                        {Object.entries(
+                          strideDistribution
+                        ).map(
+                          ([category, count]) => (
+                            <div
+                              className="threats-v2-stride-row"
+                              key={category}
+                            >
+                              <div>
+                                <span
+                                  className="threats-v2-stride-dot"
+                                  style={{
+                                    background:
+                                      STRIDE_COLORS[
+                                        category
+                                      ] ||
+                                      "#4ea8ff",
+                                  }}
+                                />
+
+                                <strong>
+                                  {category}
+                                </strong>
+                              </div>
+
+                              <b>
+                                {count}
+                              </b>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="panel threats-v2-matrix">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">
+                          Risk Analysis
+                        </p>
+
+                        <h3>
+                          5×5 Risk Matrix
+                        </h3>
+                      </div>
+
+                      <Gauge size={20} />
+                    </div>
+
+                    <div className="threat-risk-matrix-layout">
+                      <div className="risk-matrix-wrapper">
+                        <div className="matrix-y-label">
+                          IMPACT
+                        </div>
+
+                        <div className="risk-matrix">
+                          {[5, 4, 3, 2, 1].map(
+                            (impact) =>
+                              [
+                                1,
+                                2,
+                                3,
+                                4,
+                                5,
+                              ].map(
+                                (likelihood) => {
+                                  const key =
+                                    `${likelihood}-${impact}`;
+
+                                  const count =
+                                    riskMatrix[
+                                      key
+                                    ] || 0;
+
+                                  return (
+                                    <div
+                                      key={key}
+                                      className={
+                                        `matrix-cell ` +
+                                        getRiskClass(
+                                          likelihood,
+                                          impact
+                                        )
+                                      }
+                                    >
+                                      <span>
+                                        {likelihood *
+                                          impact}
+                                      </span>
+
+                                      {count > 0 && (
+                                        <b>
+                                          {count}
+                                        </b>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              )
+                          )}
+                        </div>
+
+                        <div className="matrix-x-label">
+                          LIKELIHOOD
+                        </div>
+                      </div>
+
+                      <div className="risk-matrix-legend">
+                        <div>
+                          <span className="legend-dot critical" />
+                          <strong>Critical (20–25)</strong>
+                          <b>{riskBands.critical}</b>
+                        </div>
+
+                        <div>
+                          <span className="legend-dot high" />
+                          <strong>High (15–19)</strong>
+                          <b>{riskBands.high}</b>
+                        </div>
+
+                        <div>
+                          <span className="legend-dot medium" />
+                          <strong>Medium (10–14)</strong>
+                          <b>{riskBands.medium}</b>
+                        </div>
+
+                        <div>
+                          <span className="legend-dot low" />
+                          <strong>Low (1–9)</strong>
+                          <b>{riskBands.low}</b>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <aside className="threats-v2-sidebar">
+                  <article className="panel threats-v2-top-risk">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">
+                          Risk Ranking
+                        </p>
+
+                        <h3>
+                          Top Threats by Risk
+                        </h3>
+                      </div>
+
+                      <TrendingUp size={20} />
+                    </div>
+
+                    <div className="threats-v2-top-list">
+                      {topThreats.map(
+                        (threat, index) => (
+                          <div
+                            className="threats-v2-top-item"
+                            key={
+                              `${threat.category}-` +
+                              `${threat.target}-` +
+                              `${index}`
+                            }
+                          >
+                            <span className="threats-v2-rank">
+                              {index + 1}
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  threat.category
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  threat.target
+                                }
+                              </small>
+                            </div>
+
+                            <b
+                              className={
+                                threat.severity ===
+                                "CRITICAL"
+                                  ? "danger-text"
+                                  : ""
+                              }
+                            >
+                              {
+                                threat.inherent_risk
+                              }
+                              /25
+                            </b>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="panel threats-v2-stride-model stride-reference-card">
+                    <div className="stride-reference-heading">
+                      <h3>STRIDE Model</h3>
+
+                      <p>
+                        Security threats are categorised using the STRIDE model.
+                      </p>
+                    </div>
+
+                    <div className="stride-reference-list">
+                      <div className="stride-reference-item">
+                        <span className="stride-letter s">S</span>
+
+                        <div>
+                          <strong>Spoofing</strong>
+                          <p>Impersonating a user or system</p>
+                        </div>
+                      </div>
+
+                      <div className="stride-reference-item">
+                        <span className="stride-letter t">T</span>
+
+                        <div>
+                          <strong>Tampering</strong>
+                          <p>Modifying data or code</p>
+                        </div>
+                      </div>
+
+                      <div className="stride-reference-item">
+                        <span className="stride-letter r">R</span>
+
+                        <div>
+                          <strong>Repudiation</strong>
+                          <p>Denying actions or lack of accountability</p>
+                        </div>
+                      </div>
+
+                      <div className="stride-reference-item">
+                        <span className="stride-letter i">I</span>
+
+                        <div>
+                          <strong>Information Disclosure</strong>
+                          <p>Exposing sensitive information</p>
+                        </div>
+                      </div>
+
+                      <div className="stride-reference-item">
+                        <span className="stride-letter d">D</span>
+
+                        <div>
+                          <strong>Denial of Service</strong>
+                          <p>Disrupting service availability</p>
+                        </div>
+                      </div>
+
+                      <div className="stride-reference-item">
+                        <span className="stride-letter e">E</span>
+
+                        <div>
+                          <strong>Elevation of Privilege</strong>
+                          <p>Gaining higher access rights</p>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="panel threats-v2-insights">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">
+                          Security Context
+                        </p>
+
+                        <h3>
+                          Key Insights
+                        </h3>
+                      </div>
+
+                      <Eye size={20} />
+                    </div>
+
+                    <div className="threats-v2-insight-list">
+                      <div>
+                        <span>
+                          Highest Risk
+                        </span>
+
+                        <strong>
+                          {highestThreat
+                            ? `${highestThreat.inherent_risk}/25`
+                            : "—"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Dominant Category
+                        </span>
+
+                        <strong>
+                          {dominantCategory
+                            ? dominantCategory[0]
+                            : "—"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Priority Exposure
+                        </span>
+
+                        <strong>
+                          {p1Count} P1
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Projected Residual
+                        </span>
+
+                        <strong>
+                          {averageResidual}/25
+                        </strong>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="panel threats-v2-actions">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">
+                          Security Focus
+                        </p>
+
+                        <h3>
+                          Recommended Actions
+                        </h3>
+                      </div>
+
+                      <ShieldCheck size={20} />
+                    </div>
+
+                    <div className="threats-v2-action-list">
+                      <div>
+                        <span>01</span>
+                        <p>
+                          Prioritize P1 and
+                          critical threats first.
+                        </p>
+                      </div>
+
+                      <div>
+                        <span>02</span>
+                        <p>
+                          Validate controls
+                          protecting exposed
+                          architecture paths.
+                        </p>
+                      </div>
+
+                      <div>
+                        <span>03</span>
+                        <p>
+                          Track residual risk
+                          after remediation and
+                          reassessment.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </aside>
+              </section>
+
+              <section className="panel threats-v2-register-panel">
+                <div className="threats-v2-register-top">
+                  <div className="threats-v2-register-title">
+                    <p className="eyebrow">
+                      Threat Register
+                    </p>
+
+                    <h3>
+                      Prioritized Security Threats
+                    </h3>
+
+                    <span>
+                      All identified threats across your architecture
+                    </span>
+                  </div>
+
+                  <div className="threat-filter-bar">
+                  <select
+                    value={priorityFilter}
+                    onChange={(event) =>
+                      setPriorityFilter(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="ALL">
+                      All Priorities
+                    </option>
+
+                    {[
+                      "P1",
+                      "P2",
+                      "P3",
+                      "P4",
+                      "P5",
+                    ].map((priority) => (
+                      <option
+                        key={priority}
+                        value={priority}
+                      >
+                        {priority}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={severityFilter}
+                    onChange={(event) =>
+                      setSeverityFilter(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="ALL">
+                      All Severities
+                    </option>
+
+                    {[
+                      "CRITICAL",
+                      "HIGH",
+                      "MEDIUM",
+                      "LOW",
+                      "INFO",
+                    ].map((severity) => (
+                      <option
+                        key={severity}
+                        value={severity}
+                      >
+                        {severity}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(event) =>
+                      setCategoryFilter(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="ALL">
+                      All STRIDE Categories
+                    </option>
+
+                    {categories.map(
+                      (category) => (
+                        <option
+                          key={category}
+                          value={category}
+                        >
+                          {category}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <div className="threat-search-box">
+                    <Search
+                      size={15}
+                      aria-hidden="true"
+                    />
+
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(event) =>
+                        setSearchQuery(
+                          event.target.value
+                        )
+                      }
+                      placeholder="Search threats..."
+                      aria-label="Search threats"
+                    />
+                  </div>
+
+                  <div className="filter-result-count">
+                    {
+                      filteredThreats.length
+                    }{" "}
+                    threat(s)
+                  </div>
+                  </div>
+                </div>
+
+                <div className="threat-register threats-v2-register">
+                  <div className="threat-register-row table-head">
+                    <span>Category</span>
+                    <span>Target</span>
+                    <span>Flow</span>
+                    <span>Likelihood</span>
+                    <span>Impact</span>
+                    <span>Inherent</span>
+                    <span>Residual</span>
+                    <span>Priority</span>
+                  </div>
+
+                  {filteredThreats.map(
+                    (threat, index) => (
+                      <div
+                        className="threat-register-row"
+                        key={
+                          `${threat.flow_id}-` +
+                          `${threat.category}-` +
+                          `${index}`
+                        }
+                      >
+                        <strong>
+                          {threat.category}
+                        </strong>
+
+                        <span>
+                          {threat.target}
+                        </span>
+
+                        <span>
+                          {threat.flow_id}
+                        </span>
+
+                        <span>
+                          {threat.likelihood}/5
+                        </span>
+
+                        <span>
+                          {threat.impact}/5
+                        </span>
+
+                        <span
+                          className={
+                            threat.severity ===
+                            "CRITICAL"
+                              ? "risk-value critical"
+                              : "risk-value"
+                          }
+                        >
+                          {
+                            threat.inherent_risk
+                          }
+                          /25
+                        </span>
+
+                        <span className="residual-value">
+                          {
+                            threat.residual_risk
+                          }
+                          /25
+                        </span>
+
+                        <b
+                          className={
+                            `priority-badge ` +
+                            threat.priority.toLowerCase()
+                          }
+                        >
+                          {threat.priority}
+                        </b>
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+
+              <p className="attack-disclaimer">
+                Threat risk is derived from
+                architecture context,
+                likelihood and impact.
+                Residual risk represents a
+                projected estimate based on
+                recommended controls and does
+                not represent validated
+                production effectiveness.
+              </p>
+            </>
+          )}
+
+        <Footer />
+
+      </main>
+    </div>
+  );
+}
+
+export default Threats;

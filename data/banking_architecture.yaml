@@ -16,6 +16,8 @@ components:
     type: gateway
     trust_zone: dmz
     internet_exposed: true
+    criticality: high
+    data_classification: confidential
 
   - id: auth-service
     name: Authentication Service
@@ -26,12 +28,16 @@ components:
     name: Banking API
     type: service
     trust_zone: application
+    criticality: high
+    data_classification: confidential
 
   - id: customer-db
     name: Customer Database
     type: database
     trust_zone: data
     stores_sensitive_data: true
+    criticality: critical
+    data_classification: restricted
 
   - id: payment-provider
     name: Third-Party Payment Provider
@@ -78,3 +84,39 @@ data_flows:
     encrypted: true
     authentication: true
     sensitive_data: true
+existing_controls:
+  - id: TM-C003
+    name: Integrity Protection
+    status: implemented
+    effectiveness: high
+    component_id: api-gateway
+
+  - id: TM-C004
+    name: Input Validation
+    status: partial
+    effectiveness: medium
+    component_id: banking-api
+
+  - id: TM-C008
+    name: Rate Limiting
+    status: implemented
+    effectiveness: medium
+    component_id: api-gateway
+
+  - id: TM-C009
+    name: Availability Protection
+    status: partial
+    effectiveness: medium
+    component_id: api-gateway
+
+  - id: TM-C010
+    name: Least Privilege
+    status: missing
+    effectiveness: low
+    component_id: banking-api
+
+  - id: TM-C011
+    name: Authorization Enforcement
+    status: partial
+    effectiveness: medium
+    component_id: banking-api

@@ -1,0 +1,759 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Link,
+  useSearchParams,
+} from "react-router-dom";
+
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  FileWarning,
+  LayoutDashboard,
+  Network,
+  RefreshCcw,
+  Route,
+  ShieldCheck,
+  ShieldX,
+} from "lucide-react";
+
+import Footer from "./Footer";
+import Sidebar from "./Sidebar";
+import SharedHeader from "./SharedHeader";
+
+import { getCurrentAssessment } from "./assessmentStore";
+
+import "./index.css";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+function SidebarItem({ icon: Icon, label, to, active = false }) {
+  return (
+    <Link
+      to={to}
+      className={`nav-item ${active ? "active" : ""}`}
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function Controls() {
+  const controlDetailRef = useRef(null);
+
+  const [searchParams, setSearchParams] =
+    useSearchParams();
+
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const selectedControlId =
+    searchParams.get("control");
+
+  async function loadControls() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setReport(currentAssessment);
+        return;
+      }
+
+      const response = await fetch(
+        `${API_BASE}/api/demo/banking`
+      );
+
+      if (!response.ok) {
+        throw new Error("ThreatModel API returned an error.");
+      }
+
+      setReport(await response.json());
+    } catch (err) {
+      setError(err.message || "Unable to load controls.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadControls();
+  }, []);
+
+  const controls =
+    report?.architecture?.existing_controls || [];
+
+  const highestPath = useMemo(() => {
+    if (!report?.attack_paths?.length) {
+      return null;
+    }
+
+    return [...report.attack_paths].sort(
+      (a, b) =>
+        (b.path_risk || 0) -
+        (a.path_risk || 0)
+    )[0];
+  }, [report]);
+
+  const summary =
+    highestPath?.control_summary || {};
+
+  const implemented = controls.filter(
+    (control) => control.status === "implemented"
+  ).length;
+
+  const partial = controls.filter(
+    (control) => control.status === "partial"
+  ).length;
+
+  const missing = controls.filter(
+    (control) => control.status === "missing"
+  ).length;
+
+  const selectedControl = useMemo(() => {
+    if (!selectedControlId) {
+      return null;
+    }
+
+    return controls.find(
+      (control) =>
+        control.id === selectedControlId
+    ) || null;
+  }, [controls, selectedControlId]);
+
+  const selectedControlAssessment =
+    useMemo(() => {
+      if (
+        !selectedControlId ||
+        !highestPath?.controls_assessed
+      ) {
+        return null;
+      }
+
+      return highestPath.controls_assessed.find(
+        (control) =>
+          control.id === selectedControlId
+      ) || null;
+    }, [
+      highestPath,
+      selectedControlId,
+    ]);
+
+  const selectedGap = useMemo(() => {
+    if (
+      !selectedControlId ||
+      !highestPath?.control_gaps
+    ) {
+      return null;
+    }
+
+    return highestPath.control_gaps.find(
+      (gap) =>
+        gap.id === selectedControlId
+    ) || null;
+  }, [
+    highestPath,
+    selectedControlId,
+  ]);
+
+  const relatedFinding = useMemo(() => {
+    if (
+      !selectedControlId ||
+      !report?.findings
+    ) {
+      return null;
+    }
+
+    return report.findings.find(
+      (finding) =>
+        finding.control_id ===
+        selectedControlId
+    ) || null;
+  }, [
+    report,
+    selectedControlId,
+  ]);
+
+  const selectedControlRelationship =
+    selectedControl
+      ? selectedGap
+        ? "Coverage Gap (Path Scope)"
+        : selectedControlAssessment
+          ? "Protective Control"
+          : "Architecture Control"
+      : "";
+
+  useEffect(() => {
+    if (
+      !selectedControlId ||
+      !selectedControl ||
+      !controlDetailRef.current
+    ) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      controlDetailRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [selectedControlId, selectedControl]);
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+
+      <main className="main-content page-with-footer">
+
+        <SharedHeader />
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Security Control Intelligence</p>
+            <h1>
+              Control <span>Assessment</span>
+            </h1>
+          </div>
+
+          <button
+            className="run-button"
+            onClick={loadControls}
+          >
+            <RefreshCcw size={17} />
+            Refresh Controls
+          </button>
+        </header>
+
+        <section className="architecture-page-hero">
+          <div>
+            <p className="eyebrow">Defense Posture</p>
+            <h2>Existing Security Controls</h2>
+
+            <p>
+              Evaluate declared controls, implementation
+              status, effectiveness and coverage across
+              architecture attack paths.
+            </p>
+          </div>
+
+          <div className="architecture-status">
+            CONTROL MODEL
+          </div>
+        </section>
+
+        {loading && (
+          <div className="state-panel">
+            Loading controls…
+          </div>
+        )}
+
+        {error && (
+          <div className="state-panel error">
+            <strong>Unable to load controls</strong>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && report && (
+          <>
+            <section className="control-summary-grid">
+              <div className="control-summary-card">
+                <ShieldCheck size={18} />
+                <span>Declared Controls</span>
+                <strong>{controls.length}</strong>
+                <small>Architecture inventory</small>
+              </div>
+
+              <div className="control-summary-card good">
+                <CheckCircle2 size={18} />
+                <span>Implemented</span>
+                <strong>{implemented}</strong>
+                <small>Declared implemented</small>
+              </div>
+
+              <div className="control-summary-card partial">
+                <AlertTriangle size={18} />
+                <span>Partial</span>
+                <strong>{partial}</strong>
+                <small>Needs strengthening</small>
+              </div>
+
+              <div className="control-summary-card missing">
+                <ShieldX size={18} />
+                <span>Missing</span>
+                <strong>{missing}</strong>
+                <small>Control gaps</small>
+              </div>
+
+              <div className="control-summary-card">
+                <ShieldCheck size={18} />
+                <span>Coverage</span>
+                <strong>
+                  {summary.coverage_percentage ?? 0}%
+                </strong>
+                <small>Highest-risk path</small>
+              </div>
+            </section>
+
+            <section className="control-main-grid">
+              <article className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Highest-Risk Path</p>
+                    <h3>Required Control Coverage</h3>
+                  </div>
+
+                  <ShieldCheck size={20} />
+                </div>
+
+                <div className="coverage-hero">
+                  <div className="coverage-ring">
+                    <strong>
+                      {summary.coverage_percentage ?? 0}%
+                    </strong>
+
+                    <span>coverage</span>
+                  </div>
+
+                  <div className="coverage-breakdown">
+                    <div>
+                      <span>Covered</span>
+                      <strong>
+                        {summary.implemented ?? 0}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Partial</span>
+                      <strong>
+                        {summary.partial ?? 0}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Coverage Gaps</span>
+                      <strong>
+                        {summary.missing ?? 0}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="coverage-track large">
+                  <div
+                    className="coverage-fill"
+                    style={{
+                      width: `${summary.coverage_percentage ?? 0}%`,
+                    }}
+                  />
+                </div>
+              </article>
+
+              <article className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Risk Reduction</p>
+                    <h3>Highest-Risk Path</h3>
+                  </div>
+
+                  <Route size={20} />
+                </div>
+
+                <div className="control-risk-comparison">
+                  <div>
+                    <span>Inherent Risk</span>
+                    <strong className="danger-text">
+                      {highestPath?.path_risk ?? 0}/25
+                    </strong>
+                  </div>
+
+                  <b>→</b>
+
+                  <div>
+                    <span>Residual Risk</span>
+                    <strong className="good-text">
+                      {highestPath?.residual_path_risk ?? 0}/25
+                    </strong>
+                  </div>
+                </div>
+
+                <p className="control-risk-note">
+                  Residual risk is estimated using declared
+                  implementation status and effectiveness.
+                </p>
+              </article>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Control Inventory</p>
+                  <h3>Architecture Security Controls</h3>
+                </div>
+
+                <ShieldCheck size={20} />
+              </div>
+
+              <div className="controls-table">
+                <div className="controls-row table-head">
+                  <span>ID</span>
+                  <span>Control</span>
+                  <span>Status</span>
+                  <span>Effectiveness</span>
+                  <span>Component</span>
+                </div>
+
+                {controls.map((control) => (
+                  <button
+                    type="button"
+                    className={`controls-row controls-row-button ${
+                      selectedControlId === control.id
+                        ? "selected-control-row"
+                        : ""
+                    }`}
+                    key={control.id}
+                    onClick={() => {
+                      if (
+                        selectedControlId ===
+                        control.id
+                      ) {
+                        setSearchParams({});
+                      } else {
+                        setSearchParams({
+                          control: control.id,
+                        });
+                      }
+                    }}
+                  >
+                    <strong>{control.id}</strong>
+                    <span>{control.name}</span>
+
+                    <span
+                      className={
+                        `control-status ` +
+                        control.status
+                      }
+                    >
+                      {control.status}
+                    </span>
+
+                    <span>{control.effectiveness}</span>
+                    <span>{control.component_id || "Global"}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {selectedControl && (
+              <section
+                ref={controlDetailRef}
+                className="panel control-intelligence-panel"
+              >
+
+                <div className="control-intelligence-header">
+                  <div>
+                    <p className="eyebrow">
+                      Selected Security Control
+                    </p>
+
+                    <div className="control-title-line">
+                      <span>
+                        {selectedControl.id}
+                      </span>
+
+                      <h3>
+                        {selectedControl.name}
+                      </h3>
+                    </div>
+
+                    <p>
+                      Security control context,
+                      attack-path relevance and
+                      remediation intelligence.
+                    </p>
+                  </div>
+
+                  <span
+                    className={
+                      `control-status control-intelligence-status ` +
+                      selectedControl.status
+                    }
+                  >
+                    {selectedControl.status}
+                  </span>
+                </div>
+
+
+                <div className="control-intelligence-grid">
+
+                  <div>
+                    <span>Component</span>
+                    <strong>
+                      {
+                        selectedControl.component_id ||
+                        "Global"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Effectiveness</span>
+                    <strong>
+                      {
+                        selectedControl.effectiveness
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Effective Score</span>
+                    <strong>
+                      {
+                        selectedControlAssessment
+                          ?.effective_score ??
+                        selectedGap
+                          ?.effective_score ??
+                        "—"
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Relationship</span>
+                    <strong
+                      className={
+                        selectedGap
+                          ? "danger-text"
+                          : "good-text"
+                      }
+                    >
+                      {selectedControlRelationship}
+                    </strong>
+                  </div>
+
+                </div>
+
+
+                <div className="control-intelligence-layout">
+
+                  <article className="control-context-card">
+                    <p className="eyebrow">
+                      Risk Context
+                    </p>
+
+                    <h4>
+                      {selectedGap
+                        ? "Affected Attack Path"
+                        : "Protected Attack Path"}
+                    </h4>
+
+                    <div className="control-path-display">
+                      {highestPath?.nodes?.map(
+                        (node, index) => (
+                          <span
+                            key={node}
+                            className={
+                              node ===
+                              selectedControl.component_id
+                                ? "control-path-node active"
+                                : "control-path-node"
+                            }
+                          >
+                            {node}
+
+                            {index <
+                              highestPath.nodes.length -
+                                1 && (
+                              <b>→</b>
+                            )}
+                          </span>
+                        )
+                      )}
+                    </div>
+
+                    <div className="control-risk-strip">
+                      <div>
+                        <span>Inherent Risk</span>
+
+                        <strong className="danger-text">
+                          {
+                            highestPath?.path_risk ??
+                            0
+                          }
+                          /25
+                        </strong>
+                      </div>
+
+                      <div className="risk-arrow">
+                        →
+                      </div>
+
+                      <div>
+                        <span>
+                          Estimated Residual
+                        </span>
+
+                        <strong className="good-text">
+                          {
+                            highestPath
+                              ?.residual_path_risk ??
+                            0
+                          }
+                          /25
+                        </strong>
+                      </div>
+                    </div>
+
+                    {selectedGap ? (
+                      <Link
+                        to="/attack-paths"
+                        className="control-context-link"
+                      >
+                        View Attack Path
+                        <span>→</span>
+                      </Link>
+                    ) : (
+                      <div className="protective-path-note">
+                        Assessed on{" "}
+                        <strong>
+                          {highestPath?.id || "this path"}
+                        </strong>{" "}
+                        as a protective control contributing
+                        to risk reduction.
+                      </div>
+                    )}
+                  </article>
+
+
+                  <article className="control-context-card">
+                    <p className="eyebrow">
+                      {relatedFinding &&
+                      relatedFinding.asset !==
+                        selectedControl.component_id
+                        ? "Finding Context · Different Asset"
+                        : "Finding Context"}
+                    </p>
+
+                    <h4>
+                      {
+                        relatedFinding
+                          ? relatedFinding.id
+                          : "No Active Finding"
+                      }
+                    </h4>
+
+                    {relatedFinding ? (
+                      <>
+                        <div className="finding-context-grid">
+
+                          <div>
+                            <span>Affected Asset</span>
+                            <strong>
+                              {relatedFinding.asset ||
+                                "Global"}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Owner</span>
+                            <strong>
+                              {
+                                relatedFinding.owner
+                              }
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Priority</span>
+                            <strong>
+                              {
+                                relatedFinding.priority
+                              }
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>SLA</span>
+                            <strong>
+                              {
+                                relatedFinding.sla_days
+                              }{" "}
+                              days
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Due Date</span>
+                            <strong>
+                              {
+                                relatedFinding.due_date
+                              }
+                            </strong>
+                          </div>
+
+                        </div>
+
+                        <Link
+                          to={`/findings?finding=${encodeURIComponent(
+                            relatedFinding.id
+                          )}`}
+                          className="control-context-link"
+                        >
+                          Open Finding
+                          <span>→</span>
+                        </Link>
+                      </>
+                    ) : (
+                      <p className="control-empty-context">
+                        This control currently has no
+                        generated remediation finding.
+                      </p>
+                    )}
+                  </article>
+
+                </div>
+
+
+                <div className="control-remediation-panel">
+                  <div>
+                    <p className="eyebrow">
+                      Recommended Action
+                    </p>
+
+                    <h4>
+                      Remediation Guidance
+                    </h4>
+                  </div>
+
+                  <p>
+                    {
+                      relatedFinding?.remediation ||
+                      (
+                        selectedControl.status ===
+                        "implemented"
+                          ? `${selectedControl.name} (${selectedControl.id}) is an implemented protective control contributing to risk reduction on ${highestPath?.id || "the assessed attack path"}. No remediation finding is currently generated for this control.`
+                          : `Implement or strengthen ${selectedControl.name} (${selectedControl.id}) for the affected architecture path.`
+                      )
+                    }
+                  </p>
+                </div>
+
+              </section>
+            )}
+
+          </>
+        )}
+
+        <Footer />
+
+      </main>
+    </div>
+  );
+}
+
+export default Controls;

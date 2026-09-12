@@ -42,3 +42,40 @@ def test_internet_exposed_components():
 
     assert "Mobile Banking Client" in exposed
     assert "API Gateway" in exposed
+
+def test_security_context_is_parsed():
+    architecture = load_architecture(
+        "data/banking_architecture.yaml"
+    )
+
+    customer_db = next(
+        component
+        for component
+        in architecture.components
+        if component.id == "customer-db"
+    )
+
+    assert (
+        customer_db.criticality
+        == "critical"
+    )
+
+    assert (
+        customer_db.data_classification
+        == "restricted"
+    )
+
+def test_existing_controls_are_parsed():
+    architecture = load_architecture(
+        "data/banking_architecture.yaml"
+    )
+
+    assert architecture.existing_controls
+
+    control_ids = {
+        control.id
+        for control in architecture.existing_controls
+    }
+
+    assert "TM-C010" in control_ids
+    assert "TM-C011" in control_ids
