@@ -1,0 +1,506 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+
+import {
+  Activity,
+  AlertTriangle,
+  Boxes,
+  FileWarning,
+  GitBranch,
+  LayoutDashboard,
+  Network,
+  RefreshCcw,
+  Route,
+  ShieldCheck,
+  Waypoints,
+} from "lucide-react";
+
+import {
+  Background,
+  Controls,
+  ReactFlow,
+} from "@xyflow/react";
+
+import "@xyflow/react/dist/style.css";
+import Footer from "./Footer";
+import Sidebar from "./Sidebar";
+
+import "./index.css";
+
+const API_BASE = "http://127.0.0.1:8000";
+
+const zonePositions = {
+  internet: { x: 20, y: 160 },
+  dmz: { x: 260, y: 160 },
+  application: { x: 520, y: 80 },
+  data: { x: 800, y: 80 },
+  external: { x: 800, y: 260 },
+};
+
+function SidebarItem({
+  icon: Icon,
+  label,
+  to,
+  active = false,
+}) {
+  return (
+    <Link
+      to={to}
+      className={`nav-item ${active ? "active" : ""}`}
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function Architecture() {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadArchitecture() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE}/api/demo/banking`
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "ThreatModel API returned an error."
+        );
+      }
+
+      setReport(await response.json());
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to load architecture."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadArchitecture();
+  }, []);
+
+  const nodes = useMemo(() => {
+    if (!report) {
+      return [];
+    }
+
+    const zoneCounters = {};
+
+    return report.architecture.components.map(
+      (component) => {
+        const zone =
+          component.trust_zone || "application";
+
+        zoneCounters[zone] =
+          (zoneCounters[zone] || 0) + 1;
+
+        const base =
+          zonePositions[zone] ||
+          zonePositions.application;
+
+        const offset =
+          (zoneCounters[zone] - 1) * 150;
+
+        return {
+          id: component.id,
+
+          position: {
+            x: base.x,
+            y: base.y + offset,
+          },
+
+          data: {
+            label: (
+              <div className="rf-node-content">
+                <span>
+                  {component.type}
+                </span>
+
+                <strong>
+                  {component.name}
+                </strong>
+
+                <small>
+                  {component.trust_zone}
+                </small>
+
+                <div className="rf-tags">
+                  {component.internet_exposed && (
+                    <b>Internet</b>
+                  )}
+
+                  {component.stores_sensitive_data && (
+                    <b>Sensitive</b>
+                  )}
+                </div>
+              </div>
+            ),
+          },
+
+          className:
+            component.stores_sensitive_data
+              ? "rf-node rf-critical"
+              : component.internet_exposed
+                ? "rf-node rf-exposed"
+                : "rf-node",
+        };
+      }
+    );
+  }, [report]);
+
+  const edges = useMemo(() => {
+    if (!report) {
+      return [];
+    }
+
+    return report.architecture.data_flows.map(
+      (flow) => ({
+        id: flow.id,
+        source: flow.source,
+        target: flow.destination,
+
+        label:
+          flow.protocol +
+          (flow.sensitive_data
+            ? " • Sensitive"
+            : ""),
+
+        animated: flow.sensitive_data,
+
+        style: {
+          stroke: flow.sensitive_data
+            ? "#ef4444"
+            : "#3b82f6",
+          strokeWidth: 1.8,
+        },
+
+        labelStyle: {
+          fill: "#8390a0",
+          fontSize: 9,
+        },
+
+        labelBgStyle: {
+          fill: "#090d12",
+          fillOpacity: 0.95,
+        },
+      })
+    );
+  }, [report]);
+
+  const summary = report?.summary || {};
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+
+      <main className="main-content page-with-footer">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">
+              System Security Graph
+            </p>
+
+            <h1>
+              Architecture
+              <span> Intelligence</span>
+            </h1>
+          </div>
+
+          <button
+            className="run-button"
+            onClick={loadArchitecture}
+          >
+            <RefreshCcw size={17} />
+            Refresh Model
+          </button>
+        </header>
+
+        <section className="architecture-page-hero">
+          <div>
+            <p className="eyebrow">
+              Architecture Analysis
+            </p>
+
+            <h2>
+              {summary.architecture ||
+                "Loading Architecture"}
+            </h2>
+
+            <p>
+              Explore components, trust zones,
+              data flows and sensitive paths in
+              the current security model.
+            </p>
+          </div>
+
+          <div className="architecture-status">
+            LIVE MODEL
+          </div>
+        </section>
+
+        {loading && (
+          <div className="state-panel">
+            Loading architecture model…
+          </div>
+        )}
+
+        {error && (
+          <div className="state-panel error">
+            <strong>
+              Unable to load architecture
+            </strong>
+
+            <span>{error}</span>
+          </div>
+        )}
+
+        {!loading && !error && report && (
+          <>
+            <section className="architecture-stats">
+              <div>
+                <Boxes size={18} />
+                <span>Components</span>
+                <strong>
+                  {summary.components}
+                </strong>
+              </div>
+
+              <div>
+                <Waypoints size={18} />
+                <span>Data Flows</span>
+                <strong>
+                  {summary.data_flows}
+                </strong>
+              </div>
+
+              <div>
+                <GitBranch size={18} />
+                <span>Trust Boundaries</span>
+                <strong>
+                  {summary.trust_boundaries}
+                </strong>
+              </div>
+
+              <div>
+                <AlertTriangle size={18} />
+                <span>Threats</span>
+                <strong>
+                  {summary.threats}
+                </strong>
+              </div>
+            </section>
+
+            <section className="architecture-layout">
+              <article className="panel graph-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">
+                      Interactive Graph
+                    </p>
+
+                    <h3>
+                      System Architecture
+                    </h3>
+                  </div>
+
+                  <Network size={20} />
+                </div>
+
+                <div className="react-flow-shell">
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    fitView
+                    fitViewOptions={{
+                      padding: 0.18,
+                    }}
+                    minZoom={0.45}
+                    maxZoom={1.8}
+                  >
+                    <Background
+                      gap={22}
+                      size={1}
+                      color="#202832"
+                    />
+<Controls />
+                  </ReactFlow>
+                </div>
+              </article>
+
+              <aside className="architecture-side">
+                <article className="panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">
+                        Security Context
+                      </p>
+
+                      <h3>Trust Zones</h3>
+                    </div>
+                  </div>
+
+                  <div className="zone-list">
+                    {[
+                      ...new Set(
+                        report.architecture.components.map(
+                          (component) =>
+                            component.trust_zone
+                        )
+                      ),
+                    ].map((zone) => (
+                      <div
+                        className="zone-item"
+                        key={zone}
+                      >
+                        <span className="zone-dot" />
+                        <strong>{zone}</strong>
+
+                        <small>
+                          {
+                            report.architecture.components.filter(
+                              (component) =>
+                                component.trust_zone ===
+                                zone
+                            ).length
+                          }{" "}
+                          component(s)
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">
+                        Exposure
+                      </p>
+
+                      <h3>
+                        Sensitive Assets
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="asset-list">
+                    {report.architecture.components
+                      .filter(
+                        (component) =>
+                          component.stores_sensitive_data ||
+                          component.criticality ===
+                            "critical"
+                      )
+                      .map((component) => (
+                        <div
+                          className="asset-item"
+                          key={component.id}
+                        >
+                          <AlertTriangle
+                            size={15}
+                          />
+
+                          <div>
+                            <strong>
+                              {component.name}
+                            </strong>
+
+                            <span>
+                              {
+                                component.data_classification
+                              }{" "}
+                              ·{" "}
+                              {
+                                component.criticality
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </article>
+              </aside>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">
+                    Architecture Inventory
+                  </p>
+
+                  <h3>
+                    Components & Security Context
+                  </h3>
+                </div>
+              </div>
+
+              <div className="architecture-table">
+                <div className="architecture-table-row table-head">
+                  <span>Component</span>
+                  <span>Type</span>
+                  <span>Trust Zone</span>
+                  <span>Criticality</span>
+                  <span>Classification</span>
+                  <span>Exposure</span>
+                </div>
+
+                {report.architecture.components.map(
+                  (component) => (
+                    <div
+                      className="architecture-table-row"
+                      key={component.id}
+                    >
+                      <strong>
+                        {component.name}
+                      </strong>
+
+                      <span>
+                        {component.type}
+                      </span>
+
+                      <span>
+                        {component.trust_zone}
+                      </span>
+
+                      <span>
+                        {component.criticality}
+                      </span>
+
+                      <span>
+                        {
+                          component.data_classification
+                        }
+                      </span>
+
+                      <span>
+                        {component.internet_exposed
+                          ? "Internet"
+                          : "Internal"}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        <Footer />
+
+      </main>
+    </div>
+  );
+}
+
+export default Architecture;

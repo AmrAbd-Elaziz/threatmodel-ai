@@ -32,8 +32,6 @@ import {
 import { Link } from "react-router-dom";
 
 import Footer from "./Footer";
-import Sidebar from "./Sidebar";
-import SharedHeader from "./SharedHeader";
 
 import "./index.css";
 
@@ -59,7 +57,9 @@ function SidebarItem({
 
 
 function Dashboard() {
-const [report, setReport] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(false);
+  const [report, setReport] = useState(null);
   const [remediated, setRemediated] =
     useState(null);
 
@@ -68,99 +68,6 @@ const [report, setReport] = useState(null);
 
   const [error, setError] =
     useState("");
-
-  const [selectedFile, setSelectedFile] =
-    useState(null);
-
-  const [assessmentMessage, setAssessmentMessage] =
-    useState("");
-
-
-  async function runUploadedAssessment() {
-    if (!selectedFile) {
-      setError(
-        "Select an architecture YAML or JSON file first."
-      );
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append(
-      "file",
-      selectedFile
-    );
-
-    try {
-      setLoading(true);
-      setError("");
-      setAssessmentMessage(
-        "Uploading and analyzing architecture…"
-      );
-
-      const response = await fetch(
-        `${API_BASE}/api/assessments/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        let message =
-          "Unable to analyze architecture.";
-
-        if (typeof result.detail === "string") {
-          message = result.detail;
-        } else if (
-          result.detail?.message
-        ) {
-          message = result.detail.message;
-
-          if (
-            Array.isArray(
-              result.detail.errors
-            ) &&
-            result.detail.errors.length
-          ) {
-            const firstError =
-              result.detail.errors[0];
-
-            message += ` ${
-              firstError.field
-                ? `${firstError.field}: `
-                : ""
-            }${firstError.message}`;
-          }
-        }
-
-        throw new Error(message);
-      }
-
-      setReport(result);
-      setRemediated(null);
-
-      setAssessmentMessage(
-        `Assessment complete: ${
-          result.summary?.threats ?? 0
-        } threats and ${
-          result.findings?.length ?? 0
-        } findings identified.`
-      );
-
-    } catch (err) {
-      setError(
-        err.message ||
-          "Unable to run assessment."
-      );
-
-      setAssessmentMessage("");
-
-    } finally {
-      setLoading(false);
-    }
-  }
 
 
   async function loadAssessment() {
@@ -412,111 +319,177 @@ const [report, setReport] = useState(null);
 
 
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${
+        sidebarCollapsed ? "sidebar-collapsed" : ""
+      }`}
+    >
 
-      <Sidebar />
+      <aside
+        className={`sidebar ${
+          sidebarCollapsed ? "collapsed" : ""
+        }`}
+      >
 
+        <div className="sidebar-brand sidebar-symbol-only">
 
-      <main className="main-content dashboard-v3 page-with-footer">
-
-        <div className="dashboard-unified-hero">
-
-        <SharedHeader />
-
-        <section className="dashboard-assessment-runner">
-
-          <label
-            className="dashboard-file-picker"
-            htmlFor="architecture-file"
-          >
-            <FileText size={17} />
-
-            <span>
-              {selectedFile
-                ? selectedFile.name
-                : "Select architecture file"}
-            </span>
-
-            <small>YAML / YML / JSON</small>
-          </label>
-
-          <input
-            id="architecture-file"
-            className="dashboard-file-input"
-            type="file"
-            accept=".yaml,.yml,.json,application/json,application/x-yaml,text/yaml"
-            onChange={(event) => {
-              const file =
-                event.target.files?.[0] ||
-                null;
-
-              setSelectedFile(file);
-              setError("");
-              setAssessmentMessage("");
-            }}
+          <img
+            src="/threatmodel-symbol.png"
+            alt="ThreatModel AI"
           />
 
           <button
             type="button"
-            className="run-button dashboard-assessment-button"
-            onClick={runUploadedAssessment}
-            disabled={
-              !selectedFile || loading
+            className="sidebar-toggle"
+            onClick={() =>
+              setSidebarCollapsed(
+                (collapsed) => !collapsed
+              )
+            }
+            aria-label={
+              sidebarCollapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+            }
+            title={
+              sidebarCollapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
             }
           >
-            <RefreshCcw
-              size={17}
-              className={
-                loading
-                  ? "assessment-spinner"
-                  : ""
-              }
-            />
-
-            {loading
-              ? "Analyzing…"
-              : "Run Assessment"}
+            {sidebarCollapsed ? "›" : "‹"}
           </button>
 
-          {assessmentMessage && (
-            <div className="assessment-success-message">
-              {assessmentMessage}
-            </div>
-          )}
-
-        </section>
-
-        <section className="dashboard-welcome-hero">
-
-          <div className="dashboard-welcome-copy">
-
-            <h1>
-              Welcome to ThreatModel <span>AI</span>
-            </h1>
-
-            <p>
-              ARCHITECTURE-DRIVEN THREAT MODELING
-              <b>•</b>
-              ATTACK PATH ANALYSIS
-              <b>•</b>
-              CONTROL ASSESSMENT
-              <b>•</b>
-              CONTINUOUS SECURITY REVIEW
-            </p>
-
-          </div>
-
-
-          <div className="dashboard-welcome-statement">
-            <span>TURN</span>
-            <span>ARCHITECTURE</span>
-            <span>INTO SECURITY</span>
-            <i />
-          </div>
-
-        </section>
-
         </div>
+
+
+        <nav className="sidebar-nav">
+
+          <SidebarItem
+            icon={LayoutDashboard}
+            label="Dashboard"
+            to="/"
+            active
+          />
+
+          <SidebarItem
+            icon={Network}
+            label="Architecture"
+            to="/architecture"
+          />
+
+          <SidebarItem
+            icon={AlertTriangle}
+            label="Threats"
+            to="/threats"
+          />
+
+          <SidebarItem
+            icon={Route}
+            label="Attack Paths"
+            to="/attack-paths"
+          />
+
+          <SidebarItem
+            icon={ShieldCheck}
+            label="Controls"
+            to="/controls"
+          />
+
+          <SidebarItem
+            icon={FileWarning}
+            label="Findings"
+            to="/findings"
+          />
+
+          <SidebarItem
+            icon={RefreshCcw}
+            label="Reassessment"
+            to="/reassessment"
+          />
+
+          <SidebarItem
+            icon={Activity}
+            label="Reports"
+            to="/reports"
+          />
+
+        </nav>
+
+
+        <div className="sidebar-footer">
+          <div className="status-dot" />
+
+          <div>
+            <strong>
+              Engine Online
+            </strong>
+
+            <span>
+              Deterministic analysis
+            </span>
+          </div>
+        </div>
+
+      </aside>
+
+
+      <main className="main-content dashboard-v3 page-with-footer">
+
+        <header className="tm-dashboard-header">
+
+          <div className="tm-header-toolbar tm-brand-only-toolbar">
+
+            <div className="tm-header-brand">
+              <img
+                src="/threatmodel-symbol.png"
+                alt="ThreatModel AI"
+              />
+
+              <div>
+                <div className="tm-header-brand-name">
+                  ThreatModel <span>AI</span>
+                </div>
+
+                <div className="tm-header-brand-tagline">
+                  MODEL <b>•</b>
+                  ANALYZE <b>•</b>
+                  SECURE <b>•</b>
+                  CONTINUOUSLY
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="tm-header-hero">
+
+            <div className="tm-header-copy">
+              <h1>
+                Welcome to ThreatModel <span>AI</span>
+              </h1>
+
+              <p>
+                ARCHITECTURE-DRIVEN THREAT MODELING
+                <b>•</b>
+                ATTACK PATH ANALYSIS
+                <b>•</b>
+                CONTROL ASSESSMENT
+                <b>•</b>
+                CONTINUOUS SECURITY REVIEW
+              </p>
+            </div>
+
+            <div className="tm-header-statement">
+              <span>TURN</span>
+              <span>ARCHITECTURE</span>
+              <span>INTO SECURITY</span>
+              <i />
+            </div>
+
+          </div>
+
+        </header>
 
 
         {loading && (

@@ -69,99 +69,6 @@ const [report, setReport] = useState(null);
   const [error, setError] =
     useState("");
 
-  const [selectedFile, setSelectedFile] =
-    useState(null);
-
-  const [assessmentMessage, setAssessmentMessage] =
-    useState("");
-
-
-  async function runUploadedAssessment() {
-    if (!selectedFile) {
-      setError(
-        "Select an architecture YAML or JSON file first."
-      );
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append(
-      "file",
-      selectedFile
-    );
-
-    try {
-      setLoading(true);
-      setError("");
-      setAssessmentMessage(
-        "Uploading and analyzing architecture…"
-      );
-
-      const response = await fetch(
-        `${API_BASE}/api/assessments/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        let message =
-          "Unable to analyze architecture.";
-
-        if (typeof result.detail === "string") {
-          message = result.detail;
-        } else if (
-          result.detail?.message
-        ) {
-          message = result.detail.message;
-
-          if (
-            Array.isArray(
-              result.detail.errors
-            ) &&
-            result.detail.errors.length
-          ) {
-            const firstError =
-              result.detail.errors[0];
-
-            message += ` ${
-              firstError.field
-                ? `${firstError.field}: `
-                : ""
-            }${firstError.message}`;
-          }
-        }
-
-        throw new Error(message);
-      }
-
-      setReport(result);
-      setRemediated(null);
-
-      setAssessmentMessage(
-        `Assessment complete: ${
-          result.summary?.threats ?? 0
-        } threats and ${
-          result.findings?.length ?? 0
-        } findings identified.`
-      );
-
-    } catch (err) {
-      setError(
-        err.message ||
-          "Unable to run assessment."
-      );
-
-      setAssessmentMessage("");
-
-    } finally {
-      setLoading(false);
-    }
-  }
-
 
   async function loadAssessment() {
     try {
@@ -419,72 +326,7 @@ const [report, setReport] = useState(null);
 
       <main className="main-content dashboard-v3 page-with-footer">
 
-        <div className="dashboard-unified-hero">
-
         <SharedHeader />
-
-        <section className="dashboard-assessment-runner">
-
-          <label
-            className="dashboard-file-picker"
-            htmlFor="architecture-file"
-          >
-            <FileText size={17} />
-
-            <span>
-              {selectedFile
-                ? selectedFile.name
-                : "Select architecture file"}
-            </span>
-
-            <small>YAML / YML / JSON</small>
-          </label>
-
-          <input
-            id="architecture-file"
-            className="dashboard-file-input"
-            type="file"
-            accept=".yaml,.yml,.json,application/json,application/x-yaml,text/yaml"
-            onChange={(event) => {
-              const file =
-                event.target.files?.[0] ||
-                null;
-
-              setSelectedFile(file);
-              setError("");
-              setAssessmentMessage("");
-            }}
-          />
-
-          <button
-            type="button"
-            className="run-button dashboard-assessment-button"
-            onClick={runUploadedAssessment}
-            disabled={
-              !selectedFile || loading
-            }
-          >
-            <RefreshCcw
-              size={17}
-              className={
-                loading
-                  ? "assessment-spinner"
-                  : ""
-              }
-            />
-
-            {loading
-              ? "Analyzing…"
-              : "Run Assessment"}
-          </button>
-
-          {assessmentMessage && (
-            <div className="assessment-success-message">
-              {assessmentMessage}
-            </div>
-          )}
-
-        </section>
 
         <section className="dashboard-welcome-hero">
 
@@ -515,8 +357,6 @@ const [report, setReport] = useState(null);
           </div>
 
         </section>
-
-        </div>
 
 
         {loading && (

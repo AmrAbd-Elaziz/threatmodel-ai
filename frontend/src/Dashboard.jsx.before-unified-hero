@@ -419,8 +419,6 @@ const [report, setReport] = useState(null);
 
       <main className="main-content dashboard-v3 page-with-footer">
 
-        <div className="dashboard-unified-hero">
-
         <SharedHeader />
 
         <section className="dashboard-assessment-runner">
@@ -515,8 +513,6 @@ const [report, setReport] = useState(null);
           </div>
 
         </section>
-
-        </div>
 
 
         {loading && (
