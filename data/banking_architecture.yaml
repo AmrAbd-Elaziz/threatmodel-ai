@@ -1,0 +1,72 @@
+name: Cloud Banking Application
+
+description: >
+  Synthetic cloud banking architecture used
+  for security threat modeling.
+
+components:
+  - id: mobile-client
+    name: Mobile Banking Client
+    type: client
+    trust_zone: internet
+    internet_exposed: true
+
+  - id: api-gateway
+    name: API Gateway
+    type: gateway
+    trust_zone: dmz
+    internet_exposed: true
+
+  - id: auth-service
+    name: Authentication Service
+    type: service
+    trust_zone: application
+
+  - id: banking-api
+    name: Banking API
+    type: service
+    trust_zone: application
+
+  - id: customer-db
+    name: Customer Database
+    type: database
+    trust_zone: data
+    stores_sensitive_data: true
+
+  - id: payment-provider
+    name: Third-Party Payment Provider
+    type: external_service
+    trust_zone: external
+
+data_flows:
+  - id: flow-001
+    source: mobile-client
+    destination: api-gateway
+    protocol: HTTPS
+    encrypted: true
+    authentication: true
+    sensitive_data: true
+
+  - id: flow-002
+    source: api-gateway
+    destination: banking-api
+    protocol: HTTPS
+    encrypted: true
+    authentication: true
+    sensitive_data: true
+
+  - id: flow-003
+    source: banking-api
+    destination: customer-db
+    protocol: TLS
+    encrypted: true
+    authentication: true
+    sensitive_data: true
+
+  - id: flow-004
+    source: banking-api
+    destination: payment-provider
+    protocol: HTTPS
+    encrypted: true
+    authentication: true
+    sensitive_data: true

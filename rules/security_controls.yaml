@@ -1,0 +1,61 @@
+controls:
+  Spoofing:
+    - id: TM-C001
+      name: Strong Authentication
+      description: Enforce MFA and strong identity verification.
+      effectiveness: 0.40
+
+    - id: TM-C002
+      name: Service Identity Validation
+      description: Validate service and workload identities.
+      effectiveness: 0.25
+
+  Tampering:
+    - id: TM-C003
+      name: Integrity Protection
+      description: Use cryptographic integrity controls for sensitive data.
+      effectiveness: 0.35
+
+    - id: TM-C004
+      name: Input Validation
+      description: Validate and sanitize untrusted input.
+      effectiveness: 0.25
+
+  Repudiation:
+    - id: TM-C005
+      name: Security Audit Logging
+      description: Maintain centralized and tamper-resistant audit logs.
+      effectiveness: 0.40
+
+  Information Disclosure:
+    - id: TM-C006
+      name: Encryption
+      description: Protect sensitive data in transit and at rest.
+      effectiveness: 0.40
+
+    - id: TM-C007
+      name: Access Control
+      description: Restrict sensitive data access using least privilege.
+      effectiveness: 0.30
+
+  Denial of Service:
+    - id: TM-C008
+      name: Rate Limiting
+      description: Apply request throttling and rate limiting.
+      effectiveness: 0.30
+
+    - id: TM-C009
+      name: Availability Protection
+      description: Use resilient architecture and DoS protection controls.
+      effectiveness: 0.30
+
+  Elevation of Privilege:
+    - id: TM-C010
+      name: Least Privilege
+      description: Restrict service and administrative privileges.
+      effectiveness: 0.35
+
+    - id: TM-C011
+      name: Authorization Enforcement
+      description: Enforce authorization at service and resource boundaries.
+      effectiveness: 0.35
