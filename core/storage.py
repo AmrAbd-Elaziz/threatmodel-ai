@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS assessments (
 );
 
 CREATE TABLE IF NOT EXISTS findings (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     assessment_id TEXT NOT NULL,
     attack_path_id TEXT,
     control_id TEXT,
@@ -32,7 +32,11 @@ CREATE TABLE IF NOT EXISTS findings (
     inherent_path_risk INTEGER,
     estimated_residual_risk INTEGER,
     remediation TEXT,
-    raw_json TEXT NOT NULL
+    raw_json TEXT NOT NULL,
+    PRIMARY KEY (
+        assessment_id,
+        id
+    )
 );
 
 CREATE TABLE IF NOT EXISTS finding_events (
@@ -77,6 +81,121 @@ class ThreatModelStorage:
             connection.executescript(
                 SCHEMA
             )
+
+            self._migrate_findings_schema(
+                connection
+            )
+
+    def _migrate_findings_schema(
+        self,
+        connection,
+    ):
+        columns = connection.execute(
+            """
+            PRAGMA table_info(findings)
+            """
+        ).fetchall()
+
+        primary_key_columns = [
+            row["name"]
+            for row in sorted(
+                (
+                    row
+                    for row in columns
+                    if row["pk"]
+                ),
+                key=lambda row: row["pk"],
+            )
+        ]
+
+        if primary_key_columns != [
+            "id"
+        ]:
+            return
+
+        connection.execute(
+            """
+            ALTER TABLE findings
+            RENAME TO findings_legacy
+            """
+        )
+
+        connection.execute(
+            """
+            CREATE TABLE findings (
+                id TEXT NOT NULL,
+                assessment_id TEXT NOT NULL,
+                attack_path_id TEXT,
+                control_id TEXT,
+                control_name TEXT,
+                asset TEXT,
+                status TEXT NOT NULL,
+                owner TEXT,
+                priority TEXT,
+                sla_days INTEGER,
+                due_date TEXT,
+                sla_status TEXT,
+                days_remaining INTEGER,
+                inherent_path_risk INTEGER,
+                estimated_residual_risk INTEGER,
+                remediation TEXT,
+                raw_json TEXT NOT NULL,
+                PRIMARY KEY (
+                    assessment_id,
+                    id
+                )
+            )
+            """
+        )
+
+        connection.execute(
+            """
+            INSERT INTO findings (
+                id,
+                assessment_id,
+                attack_path_id,
+                control_id,
+                control_name,
+                asset,
+                status,
+                owner,
+                priority,
+                sla_days,
+                due_date,
+                sla_status,
+                days_remaining,
+                inherent_path_risk,
+                estimated_residual_risk,
+                remediation,
+                raw_json
+            )
+            SELECT
+                id,
+                assessment_id,
+                attack_path_id,
+                control_id,
+                control_name,
+                asset,
+                status,
+                owner,
+                priority,
+                sla_days,
+                due_date,
+                sla_status,
+                days_remaining,
+                inherent_path_risk,
+                estimated_residual_risk,
+                remediation,
+                raw_json
+            FROM findings_legacy
+            """
+        )
+
+        connection.execute(
+            """
+            DROP TABLE findings_legacy
+            """
+        )
 
     def save_assessment(
         self,
@@ -134,7 +253,7 @@ class ThreatModelStorage:
             for finding in findings:
                 connection.execute(
                     """
-                    INSERT OR REPLACE INTO findings (
+                    INSERT INTO findings (
                         id,
                         assessment_id,
                         attack_path_id,
@@ -157,6 +276,26 @@ class ThreatModelStorage:
                         ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?, ?
                     )
+                    ON CONFLICT(
+                        assessment_id,
+                        id
+                    )
+                    DO UPDATE SET
+                        attack_path_id = excluded.attack_path_id,
+                        control_id = excluded.control_id,
+                        control_name = excluded.control_name,
+                        asset = excluded.asset,
+                        status = excluded.status,
+                        owner = excluded.owner,
+                        priority = excluded.priority,
+                        sla_days = excluded.sla_days,
+                        due_date = excluded.due_date,
+                        sla_status = excluded.sla_status,
+                        days_remaining = excluded.days_remaining,
+                        inherent_path_risk = excluded.inherent_path_risk,
+                        estimated_residual_risk = excluded.estimated_residual_risk,
+                        remediation = excluded.remediation,
+                        raw_json = excluded.raw_json
                     """,
                     (
                         finding["id"],

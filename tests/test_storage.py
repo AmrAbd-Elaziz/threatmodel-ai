@@ -142,3 +142,85 @@ def test_save_finding_event(
         events[0]["to_status"]
         == "Resolved"
     )
+
+
+def test_same_finding_id_is_preserved_across_assessments(
+    tmp_path,
+):
+    storage = ThreatModelStorage(
+        tmp_path / "history.db"
+    )
+
+    finding_a1 = {
+        "id": "GAP-STABLE01",
+        "attack_path_id": "AP-001",
+        "control_id": "TM-C010",
+        "control_name": "Least Privilege",
+        "asset": "banking-api",
+        "status": "Open",
+        "owner": "IAM / Application Team",
+        "priority": "P3",
+        "sla_days": 30,
+        "due_date": "2026-10-01",
+        "sla_status": "Within SLA",
+        "days_remaining": 30,
+        "inherent_path_risk": 23,
+        "estimated_residual_risk": 12,
+        "remediation": "Implement least privilege.",
+    }
+
+    finding_a2 = {
+        **finding_a1,
+        "status": "In Progress",
+        "estimated_residual_risk": 6,
+    }
+
+    storage.save_findings(
+        [finding_a1],
+        "A-001",
+    )
+
+    storage.save_findings(
+        [finding_a2],
+        "A-002",
+    )
+
+    with storage._connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                assessment_id,
+                id,
+                status,
+                estimated_residual_risk
+            FROM findings
+            WHERE id = ?
+            ORDER BY assessment_id
+            """,
+            (
+                "GAP-STABLE01",
+            ),
+        ).fetchall()
+
+    assert len(rows) == 2
+
+    assert rows[0]["assessment_id"] == "A-001"
+    assert rows[0]["status"] == "Open"
+    assert (
+        rows[0][
+            "estimated_residual_risk"
+        ]
+        == 12
+    )
+
+    assert rows[1]["assessment_id"] == "A-002"
+    assert (
+        rows[1]["status"]
+        == "In Progress"
+    )
+    assert (
+        rows[1][
+            "estimated_residual_risk"
+        ]
+        == 6
+    )
