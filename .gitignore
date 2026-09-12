@@ -1,0 +1,9 @@
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# ThreatModel runtime database
+data/*.db
+data/*.db-shm
+data/*.db-wal

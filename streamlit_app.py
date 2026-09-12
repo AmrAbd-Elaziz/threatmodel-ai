@@ -8,10 +8,13 @@ import tempfile
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from graphviz import Digraph
 
 from core.reporting import generate_html_report
 from core.service import analyze_architecture
+from core.assessment_history import create_assessment_snapshot, compare_assessments
+from core.finding_reconciliation import reconcile_findings, reconciliation_summary
 
 
 # ============================================================
@@ -341,7 +344,420 @@ try:
         graph,
         use_container_width=True,
     )
+    # ========================================================
+    # 9.1 HIGHEST-RISK ATTACK PATH
+    # ========================================================
 
+    attack_paths = report.get(
+        "attack_paths",
+        [],
+    )
+
+    if attack_paths:
+        highest_path = max(
+            attack_paths,
+            key=lambda item:
+                item.get(
+                    "path_risk",
+                    0,
+                ),
+        )
+
+        st.markdown(
+            "### 🚨 Highest-Risk Attack Path"
+        )
+
+        st.caption(
+            "Architecture-level attack path analysis "
+            "showing exposure, trust-boundary "
+            "crossings, associated threats, declared "
+            "controls, and estimated residual risk."
+        )
+
+        path_cols = st.columns(4)
+
+        path_cols[0].metric(
+            "Entry Point",
+            highest_path[
+                "entry_point"
+            ],
+        )
+
+        path_cols[1].metric(
+            "Critical Asset",
+            highest_path[
+                "critical_asset"
+            ],
+        )
+
+        path_cols[2].metric(
+            "Inherent Path Risk",
+            (
+                f"{highest_path[
+                    'path_risk'
+                ]}/25"
+            ),
+        )
+
+        path_cols[3].metric(
+            "Priority",
+            highest_path.get(
+                "path_priority",
+                highest_path.get(
+                    "priority",
+                    "N/A",
+                ),
+            ),
+        )
+
+        st.markdown(
+            "**Attack Path**"
+        )
+
+        path_display = "  →  ".join(
+            highest_path["nodes"]
+        )
+
+        component_map = {
+            component["id"]: component
+            for component in architecture[
+                "components"
+            ]
+        }
+
+        path_graph = Digraph(
+            "highest_risk_attack_path"
+        )
+
+        path_graph.attr(
+            rankdir="LR",
+            bgcolor="transparent",
+            pad="0.35",
+            nodesep="0.55",
+            ranksep="0.75",
+        )
+
+        path_graph.attr(
+            "node",
+            shape="box",
+            style="rounded,filled",
+            fontcolor="white",
+            fontname="Arial",
+            penwidth="2",
+            margin="0.22",
+        )
+
+        path_graph.attr(
+            "edge",
+            color="#f59e0b",
+            fontcolor="#cbd5e1",
+            fontname="Arial",
+            penwidth="2",
+            arrowsize="0.9",
+        )
+
+        for index, node_id in enumerate(
+            highest_path["nodes"]
+        ):
+            component = component_map.get(
+                node_id,
+                {},
+            )
+
+            name = component.get(
+                "name",
+                node_id,
+            )
+
+            zone = component.get(
+                "trust_zone",
+                "unknown",
+            )
+
+            criticality = component.get(
+                "criticality",
+                "medium",
+            ).upper()
+
+            classification = component.get(
+                "data_classification",
+                "internal",
+            ).upper()
+
+            if index == 0:
+                role = "ENTRY POINT"
+                fillcolor = "#7f1d1d"
+                bordercolor = "#ef4444"
+
+            elif index == (
+                len(
+                    highest_path["nodes"]
+                ) - 1
+            ):
+                role = "CRITICAL ASSET"
+                fillcolor = "#581c87"
+                bordercolor = "#c084fc"
+
+            else:
+                role = "ATTACK PATH"
+                fillcolor = "#1e3a5f"
+                bordercolor = "#38bdf8"
+
+            node_label = (
+                f"{role}\n"
+                f"{name}\n"
+                f"Zone: {zone}\n"
+                f"Criticality: {criticality}\n"
+                f"Data: {classification}"
+            )
+
+            path_graph.node(
+                node_id,
+                node_label,
+                fillcolor=fillcolor,
+                color=bordercolor,
+            )
+
+        for source, destination in zip(
+            highest_path["nodes"],
+            highest_path["nodes"][1:],
+        ):
+            source_component = (
+                component_map.get(
+                    source,
+                    {},
+                )
+            )
+
+            destination_component = (
+                component_map.get(
+                    destination,
+                    {},
+                )
+            )
+
+            matching_flow = next(
+                (
+                    flow
+                    for flow in architecture[
+                        "data_flows"
+                    ]
+                    if flow["source"] == source
+                    and flow[
+                        "destination"
+                    ] == destination
+                ),
+                None,
+            )
+
+            edge_labels = []
+
+            if matching_flow:
+                edge_labels.append(
+                    matching_flow[
+                        "protocol"
+                    ]
+                )
+
+                if matching_flow.get(
+                    "sensitive_data"
+                ):
+                    edge_labels.append(
+                        "Sensitive Data"
+                    )
+
+            if (
+                source_component.get(
+                    "trust_zone"
+                )
+                != destination_component.get(
+                    "trust_zone"
+                )
+            ):
+                edge_labels.append(
+                    "Trust Boundary"
+                )
+
+            path_graph.edge(
+                source,
+                destination,
+                label="\n".join(
+                    edge_labels
+                ),
+            )
+
+        st.graphviz_chart(
+            path_graph,
+            use_container_width=True,
+        )
+
+        st.caption(
+            "Path: "
+            + path_display
+        )
+
+        detail_cols = st.columns(4)
+
+        detail_cols[0].metric(
+            "Trust Boundaries",
+            highest_path[
+                "boundary_crossings"
+            ],
+        )
+
+        detail_cols[1].metric(
+            "Threats Along Path",
+            highest_path[
+                "threat_count"
+            ],
+        )
+
+        control_summary = (
+            highest_path.get(
+                "control_summary",
+                {},
+            )
+        )
+
+        detail_cols[2].metric(
+            "Control Coverage",
+            (
+                f"{control_summary.get(
+                    'coverage_percentage',
+                    0,
+                )}%"
+            ),
+        )
+
+        detail_cols[3].metric(
+            "Estimated Residual Risk",
+            (
+                f"{highest_path.get(
+                    'residual_path_risk',
+                    highest_path[
+                        'path_risk'
+                    ],
+                )}/25"
+            ),
+        )
+
+        residual_severity = (
+            highest_path.get(
+                "residual_path_severity",
+                "N/A",
+            )
+        )
+
+        residual_priority = (
+            highest_path.get(
+                "residual_path_priority",
+                "N/A",
+            )
+        )
+
+        st.info(
+            "Estimated residual risk based on "
+            "declared existing controls: "
+            f"{highest_path.get(
+                'residual_path_risk',
+                highest_path['path_risk'],
+            )}/25 "
+            f"({residual_severity}, "
+            f"{residual_priority})."
+        )
+
+        control_gaps = (
+            highest_path.get(
+                "control_gaps",
+                [],
+            )
+        )
+
+        st.markdown(
+            "#### Control Gaps"
+        )
+
+        if control_gaps:
+            gap_rows = []
+
+            for gap in control_gaps:
+                gap_rows.append(
+                    {
+                        "Control": (
+                            gap["id"]
+                        ),
+                        "Control Name": (
+                            gap["name"]
+                        ),
+                        "Status": (
+                            gap["status"]
+                        ),
+                        "Effectiveness": (
+                            gap[
+                                "effectiveness"
+                            ]
+                        ),
+                        "Component": (
+                            gap.get(
+                                "component_id"
+                            )
+                            or highest_path[
+                                "critical_asset"
+                            ]
+                        ),
+                    }
+                )
+
+            st.dataframe(
+                pd.DataFrame(
+                    gap_rows
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        else:
+            st.success(
+                "No declared control gaps "
+                "were identified for this "
+                "attack path."
+            )
+
+        with st.expander(
+            "Why is this path high risk?"
+        ):
+            risk_drivers = (
+                highest_path.get(
+                    "risk_drivers",
+                    [],
+                )
+            )
+
+            if risk_drivers:
+                for driver in risk_drivers:
+                    st.markdown(
+                        f"- {driver}"
+                    )
+            else:
+                st.write(
+                    highest_path.get(
+                        "analysis_basis",
+                        "Architecture-driven "
+                        "risk analysis.",
+                    )
+                )
+
+            st.caption(
+                "This represents a plausible "
+                "architecture attack path, not "
+                "a confirmed exploit chain."
+            )
+
+    else:
+        st.info(
+            "No architecture attack paths "
+            "were identified."
+        )
 
     # ========================================================
     # 10. DATA FLOW OVERVIEW
@@ -630,9 +1046,29 @@ try:
     </div>
     """
 
-    st.markdown(
+    matrix_html = """
+    <style>
         html,
-        unsafe_allow_html=True,
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            color: #f8fafc;
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+    </style>
+    """ + html
+
+    components.html(
+        matrix_html,
+        height=575,
+        scrolling=False,
     )
 
     st.markdown("#### Highest-Risk Positions")
@@ -853,7 +1289,495 @@ try:
 
 
     # ========================================================
-    # 17. REPORT GENERATION & DOWNLOADS
+    # 17. CONTINUOUS ASSESSMENT & REMEDIATION TREND
+    # ========================================================
+
+    st.subheader(
+        "Continuous Assessment & Remediation"
+    )
+
+    baseline_file = (
+        "data/banking_architecture.yaml"
+    )
+
+    remediated_file = (
+        "data/"
+        "banking_architecture_remediated.yaml"
+    )
+
+    if (
+        os.path.exists(baseline_file)
+        and os.path.exists(remediated_file)
+    ):
+        baseline_report = (
+            analyze_architecture(
+                baseline_file
+            )
+        )
+
+        remediated_report = (
+            analyze_architecture(
+                remediated_file
+            )
+        )
+
+        baseline_snapshot = (
+            create_assessment_snapshot(
+                baseline_report,
+                "A-001",
+            )
+        )
+
+        remediated_snapshot = (
+            create_assessment_snapshot(
+                remediated_report,
+                "A-002",
+            )
+        )
+
+        assessment_comparison = (
+            compare_assessments(
+                baseline_snapshot,
+                remediated_snapshot,
+            )
+        )
+
+        finding_reconciliation = (
+            reconcile_findings(
+                baseline_report[
+                    "findings"
+                ],
+                remediated_report[
+                    "findings"
+                ],
+            )
+        )
+
+        finding_summary = (
+            reconciliation_summary(
+                finding_reconciliation
+            )
+        )
+
+        trend_cols = st.columns(4)
+
+        trend_cols[0].metric(
+            "Baseline Coverage",
+            (
+                f"{baseline_snapshot[
+                    'average_control_coverage'
+                ]}%"
+            ),
+        )
+
+        trend_cols[1].metric(
+            "Current Coverage",
+            (
+                f"{remediated_snapshot[
+                    'average_control_coverage'
+                ]}%"
+            ),
+            delta=(
+                f"{assessment_comparison[
+                    'coverage_change'
+                ]:+}%"
+            ),
+        )
+
+        trend_cols[2].metric(
+            "Baseline Residual Risk",
+            (
+                f"{baseline_snapshot[
+                    'highest_residual_risk'
+                ]}/25"
+            ),
+        )
+
+        trend_cols[3].metric(
+            "Current Residual Risk",
+            (
+                f"{remediated_snapshot[
+                    'highest_residual_risk'
+                ]}/25"
+            ),
+            delta=(
+                assessment_comparison[
+                    "risk_change"
+                ]
+            ),
+            delta_color="inverse",
+        )
+
+        st.caption(
+            "Assessment trend: "
+            f"{assessment_comparison['trend']}. "
+            "Residual risk is estimated from "
+            "declared control implementation "
+            "and effectiveness."
+        )
+
+        assessment_df = pd.DataFrame(
+            [
+                {
+                    "Assessment": "A-001",
+                    "Stage": "Baseline",
+                    "Control Coverage (%)": (
+                        baseline_snapshot[
+                            "average_control_coverage"
+                        ]
+                    ),
+                    "Residual Risk": (
+                        baseline_snapshot[
+                            "highest_residual_risk"
+                        ]
+                    ),
+                    "Findings": (
+                        baseline_snapshot[
+                            "finding_count"
+                        ]
+                    ),
+                },
+                {
+                    "Assessment": "A-002",
+                    "Stage": "After Remediation",
+                    "Control Coverage (%)": (
+                        remediated_snapshot[
+                            "average_control_coverage"
+                        ]
+                    ),
+                    "Residual Risk": (
+                        remediated_snapshot[
+                            "highest_residual_risk"
+                        ]
+                    ),
+                    "Findings": (
+                        remediated_snapshot[
+                            "finding_count"
+                        ]
+                    ),
+                },
+            ]
+        )
+
+        st.dataframe(
+            assessment_df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # ====================================================
+        # SECURITY FINDINGS & REMEDIATION
+        # ====================================================
+
+        st.markdown(
+            "### Security Findings & Remediation"
+        )
+
+        st.caption(
+            "Current security findings after remediation, "
+            "including ownership, SLA status, priority, "
+            "and estimated residual risk."
+        )
+
+        current_findings = (
+            remediated_report.get(
+                "findings",
+                [],
+            )
+        )
+
+        open_findings = [
+            finding
+            for finding in current_findings
+            if finding.get(
+                "status"
+            ) in {
+                "Open",
+                "In Progress",
+            }
+        ]
+
+        overdue_findings = [
+            finding
+            for finding in current_findings
+            if finding.get(
+                "sla_status"
+            ) == "Overdue"
+        ]
+
+        p1_findings = [
+            finding
+            for finding in current_findings
+            if finding.get(
+                "priority"
+            ) == "P1"
+        ]
+
+        finding_metric_cols = (
+            st.columns(4)
+        )
+
+        finding_metric_cols[0].metric(
+            "Open Findings",
+            len(open_findings),
+        )
+
+        finding_metric_cols[1].metric(
+            "Resolved",
+            finding_summary[
+                "Resolved"
+            ],
+        )
+
+        finding_metric_cols[2].metric(
+            "Overdue",
+            len(overdue_findings),
+        )
+
+        finding_metric_cols[3].metric(
+            "Current P1",
+            len(p1_findings),
+        )
+
+        if current_findings:
+            finding_rows = []
+
+            for finding in current_findings:
+                finding_rows.append(
+                    {
+                        "Finding": (
+                            finding["id"]
+                        ),
+                        "Asset": (
+                            finding.get(
+                                "asset",
+                                "N/A",
+                            )
+                        ),
+                        "Control": (
+                            finding.get(
+                                "control_id",
+                                "N/A",
+                            )
+                        ),
+                        "Control Name": (
+                            finding.get(
+                                "control_name",
+                                "N/A",
+                            )
+                        ),
+                        "Priority": (
+                            finding.get(
+                                "priority",
+                                "N/A",
+                            )
+                        ),
+                        "Status": (
+                            finding.get(
+                                "status",
+                                "N/A",
+                            )
+                        ),
+                        "Owner": (
+                            finding.get(
+                                "owner",
+                                "Unassigned",
+                            )
+                        ),
+                        "SLA": (
+                            finding.get(
+                                "sla_status",
+                                "N/A",
+                            )
+                        ),
+                        "Due Date": (
+                            finding.get(
+                                "due_date",
+                                "N/A",
+                            )
+                        ),
+                        "Residual Risk": (
+                            finding.get(
+                                "estimated_residual_risk",
+                                "N/A",
+                            )
+                        ),
+                    }
+                )
+
+            findings_df = pd.DataFrame(
+                finding_rows
+            )
+
+            st.dataframe(
+                findings_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            st.markdown(
+                "#### Remediation Actions"
+            )
+
+            for finding in current_findings:
+                title = (
+                    f"{finding['id']} · "
+                    f"{finding.get(
+                        'control_name',
+                        'Control Gap',
+                    )} · "
+                    f"{finding.get(
+                        'priority',
+                        'N/A',
+                    )}"
+                )
+
+                with st.expander(
+                    title
+                ):
+                    remediation_cols = (
+                        st.columns(3)
+                    )
+
+                    remediation_cols[
+                        0
+                    ].metric(
+                        "Owner",
+                        finding.get(
+                            "owner",
+                            "Unassigned",
+                        ),
+                    )
+
+                    remediation_cols[
+                        1
+                    ].metric(
+                        "SLA Status",
+                        finding.get(
+                            "sla_status",
+                            "N/A",
+                        ),
+                    )
+
+                    remediation_cols[
+                        2
+                    ].metric(
+                        "Due Date",
+                        finding.get(
+                            "due_date",
+                            "N/A",
+                        ),
+                    )
+
+                    st.markdown(
+                        "**Recommended Remediation**"
+                    )
+
+                    st.write(
+                        finding.get(
+                            "remediation",
+                            "No remediation "
+                            "guidance available.",
+                        )
+                    )
+
+                    st.caption(
+                        "Estimated residual "
+                        "path risk: "
+                        f"{finding.get(
+                            'estimated_residual_risk',
+                            'N/A',
+                        )}/25"
+                    )
+
+        else:
+            st.success(
+                "No current open security "
+                "findings remain after "
+                "remediation."
+            )
+
+        st.markdown(
+            "#### Finding Lifecycle"
+        )
+
+        finding_cols = st.columns(4)
+
+        finding_cols[0].metric(
+            "Resolved",
+            finding_summary[
+                "Resolved"
+            ],
+        )
+
+        finding_cols[1].metric(
+            "Still Open",
+            finding_summary[
+                "Still Open"
+            ],
+        )
+
+        finding_cols[2].metric(
+            "New",
+            finding_summary[
+                "New"
+            ],
+        )
+
+        finding_cols[3].metric(
+            "Reopened",
+            finding_summary[
+                "Reopened"
+            ],
+        )
+
+        reconciliation_rows = []
+
+        for item in finding_reconciliation:
+            reconciliation_rows.append(
+                {
+                    "Finding": (
+                        item["finding_id"]
+                    ),
+                    "Control": (
+                        item["control_id"]
+                    ),
+                    "Control Name": (
+                        item[
+                            "control_name"
+                        ]
+                    ),
+                    "Asset": (
+                        item["asset"]
+                    ),
+                    "Lifecycle": (
+                        item["state"]
+                    ),
+                }
+            )
+
+        if reconciliation_rows:
+            st.dataframe(
+                pd.DataFrame(
+                    reconciliation_rows
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    else:
+        st.info(
+            "Continuous assessment data "
+            "will appear after both baseline "
+            "and remediated architecture "
+            "files are available."
+        )
+
+    st.divider()
+
+
+    # ========================================================
+    # 18. REPORT GENERATION & DOWNLOADS
     # ========================================================
 
     st.subheader(
@@ -895,7 +1819,7 @@ try:
 
 
     # ========================================================
-    # 18. FOOTER
+    # 19. FOOTER
     # ========================================================
 
     st.caption(
@@ -906,7 +1830,7 @@ try:
 
 
 # ============================================================
-# 19. TEMPORARY FILE CLEANUP
+# 20. TEMPORARY FILE CLEANUP
 # ============================================================
 
 finally:
