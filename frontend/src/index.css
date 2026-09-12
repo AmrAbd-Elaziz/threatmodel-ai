@@ -14431,3 +14431,334 @@ span {
     );
 }
 
+
+/* ==========================================================
+   THREATMODEL AI — FOOTER
+   ========================================================== */
+
+.tm-footer {
+  grid-column: 1 / -1;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+
+  min-height: 68px;
+
+  margin-top: 28px;
+  padding: 0 24px;
+
+  border-top: 1px solid #202832;
+  border-bottom: 1px solid #2b3540;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12, 16, 21, .96),
+      rgba(7, 10, 14, .98)
+    );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.015);
+
+  color: #dce4ec;
+}
+
+
+/* Brand */
+
+.tm-footer-brand {
+  white-space: nowrap;
+
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.tm-footer-brand span {
+  color: #ff3049;
+}
+
+
+/* Tagline */
+
+.tm-footer-tagline {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  margin-left: 28px;
+
+  color: #7f8b9b;
+
+  font-size: 9px;
+  font-weight: 650;
+
+  letter-spacing: .32em;
+}
+
+.tm-footer-tagline b {
+  color: #596675;
+
+  font-size: 8px;
+}
+
+
+/* Credit */
+
+.tm-footer-credit {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  white-space: nowrap;
+
+  color: #8995a4;
+
+  font-size: 10px;
+}
+
+.tm-footer-credit i {
+  display: block;
+
+  width: 24px;
+  height: 2px;
+
+  background: #ff3049;
+
+  box-shadow:
+    0 0 7px rgba(255,48,73,.35);
+}
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+
+  .tm-footer {
+    grid-template-columns: 1fr;
+    gap: 8px;
+
+    padding: 15px 18px;
+  }
+
+  .tm-footer-tagline {
+    margin-left: 0;
+
+    letter-spacing: .18em;
+  }
+
+  .tm-footer-credit {
+    justify-self: start;
+  }
+
+}
+
+
+/* ==========================================================
+   FOOTER FIX — keep footer inside main content area
+   ========================================================== */
+
+.tm-footer {
+  grid-column: 2 !important;
+
+  width: auto;
+
+  margin-left: 0;
+  margin-right: 0;
+
+  grid-template-columns:
+    auto
+    minmax(0, 1fr)
+    auto;
+}
+
+.tm-footer-brand {
+  display: block !important;
+
+  color: #f4f7fa;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  min-width: max-content;
+}
+
+.tm-footer-brand span {
+  color: #ff3049;
+}
+
+@media (max-width: 760px) {
+  .tm-footer {
+    grid-column: 1 !important;
+  }
+}
+
+
+/* Footer spacing refinement */
+.tm-footer {
+  margin-top: 14px !important;
+}
+
+.dashboard-v3-bottom {
+  margin-bottom: 0 !important;
+}
+
+.dashboard-v3 {
+  padding-bottom: 0 !important;
+}
+
+/* Footer spacing refinement */
+.tm-footer {
+  margin-top: 14px !important;
+}
+
+.dashboard-v3-bottom {
+  margin-bottom: 0 !important;
+}
+
+.dashboard-v3 {
+  padding-bottom: 0 !important;
+}
+
+/* Footer final placement */
+.tm-footer {
+  grid-column: auto !important;
+  width: 100% !important;
+  box-sizing: border-box;
+
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+.dashboard-v3 {
+  padding-bottom: 0 !important;
+}
+
+/* Footer final bottom alignment */
+.dashboard-v3 {
+  padding-bottom: 0 !important;
+}
+
+.tm-footer {
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+.main-content.dashboard-v3 {
+  min-height: auto !important;
+}
+
+/* Footer final bottom alignment */
+.dashboard-v3 {
+  padding-bottom: 0 !important;
+}
+
+.tm-footer {
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+.main-content.dashboard-v3 {
+  min-height: auto !important;
+}
+
+/* ==========================================================
+   DASHBOARD FOOTER — TRUE BOTTOM FIX
+   ========================================================== */
+
+.main-content.dashboard-v3 {
+  display: flex !important;
+  flex-direction: column !important;
+
+  min-height: 100vh !important;
+  box-sizing: border-box !important;
+
+  padding-bottom: 0 !important;
+}
+
+.tm-footer {
+  flex-shrink: 0 !important;
+
+  width: 100% !important;
+
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Push footer to viewport bottom only when content is short */
+.dashboard-v3 > .tm-footer {
+  margin-top: auto !important;
+}
+
+/* Keep a small visual gap after the last dashboard section */
+.dashboard-v3-bottom {
+  margin-bottom: 14px !important;
+}
+
+/* ==========================================================
+   GLOBAL APPLICATION LAYOUT — FINAL FIX
+   ========================================================== */
+
+.app-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: grid !important;
+  grid-template-columns: 205px minmax(0, 1fr) !important;
+  align-items: stretch;
+}
+
+.app-shell > .sidebar {
+  display: flex !important;
+  position: sticky !important;
+  top: 0;
+  width: 205px !important;
+  min-width: 205px !important;
+  height: 100vh !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  overflow: hidden auto;
+}
+
+.app-shell > .main-content {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.main-content.page-with-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+  box-sizing: border-box;
+  padding-bottom: 0 !important;
+}
+
+.main-content.page-with-footer > .tm-footer {
+  width: 100% !important;
+  grid-column: auto !important;
+  flex-shrink: 0 !important;
+  margin-top: auto !important;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    display: block !important;
+  }
+
+  .app-shell > .sidebar {
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+  }
+
+  .app-shell > .main-content {
+    width: 100% !important;
+  }
+}
+

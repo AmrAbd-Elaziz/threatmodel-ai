@@ -31,6 +31,8 @@ import {
 
 import { Link } from "react-router-dom";
 
+import Footer from "./Footer";
+
 import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -408,7 +410,7 @@ function Dashboard() {
       </aside>
 
 
-      <main className="main-content dashboard-v3">
+      <main className="main-content dashboard-v3 page-with-footer">
 
         <header className="topbar dashboard-v3-topbar">
 
@@ -1230,9 +1232,10 @@ function Dashboard() {
             </>
           )}
 
-      </main>
+        <Footer />
 
-    </div>
+      </main>
+</div>
   );
 }
 
