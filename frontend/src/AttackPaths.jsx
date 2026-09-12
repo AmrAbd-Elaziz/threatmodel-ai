@@ -28,6 +28,8 @@ import Footer from "./Footer";
 import Sidebar from "./Sidebar";
 import SharedHeader from "./SharedHeader";
 
+import { getCurrentAssessment } from "./assessmentStore";
+
 import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -63,6 +65,14 @@ function AttackPaths() {
     try {
       setLoading(true);
       setError("");
+
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setReport(currentAssessment);
+        return;
+      }
 
       const response = await fetch(
         `${API_BASE}/api/demo/banking`

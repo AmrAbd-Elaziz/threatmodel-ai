@@ -21,6 +21,8 @@ import Footer from "./Footer";
 import Sidebar from "./Sidebar";
 import SharedHeader from "./SharedHeader";
 
+import { getCurrentAssessment } from "./assessmentStore";
+
 import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -54,6 +56,14 @@ function Controls() {
     try {
       setLoading(true);
       setError("");
+
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setReport(currentAssessment);
+        return;
+      }
 
       const response = await fetch(
         `${API_BASE}/api/demo/banking`
@@ -172,7 +182,7 @@ function Controls() {
   const selectedControlRelationship =
     selectedControl
       ? selectedGap
-        ? "Control Gap"
+        ? "Coverage Gap (Path Scope)"
         : selectedControlAssessment
           ? "Protective Control"
           : "Architecture Control"
@@ -254,9 +264,9 @@ function Controls() {
             <section className="control-summary-grid">
               <div className="control-summary-card">
                 <ShieldCheck size={18} />
-                <span>Required</span>
-                <strong>{summary.required ?? 0}</strong>
-                <small>Path controls</small>
+                <span>Declared Controls</span>
+                <strong>{controls.length}</strong>
+                <small>Architecture inventory</small>
               </div>
 
               <div className="control-summary-card good">
@@ -294,8 +304,8 @@ function Controls() {
               <article className="panel">
                 <div className="panel-heading">
                   <div>
-                    <p className="eyebrow">Coverage</p>
-                    <h3>Control Effectiveness</h3>
+                    <p className="eyebrow">Highest-Risk Path</p>
+                    <h3>Required Control Coverage</h3>
                   </div>
 
                   <ShieldCheck size={20} />
@@ -312,7 +322,7 @@ function Controls() {
 
                   <div className="coverage-breakdown">
                     <div>
-                      <span>Implemented</span>
+                      <span>Covered</span>
                       <strong>
                         {summary.implemented ?? 0}
                       </strong>
@@ -326,7 +336,7 @@ function Controls() {
                     </div>
 
                     <div>
-                      <span>Missing</span>
+                      <span>Coverage Gaps</span>
                       <strong>
                         {summary.missing ?? 0}
                       </strong>
@@ -622,7 +632,11 @@ function Controls() {
 
                   <article className="control-context-card">
                     <p className="eyebrow">
-                      Finding Context
+                      {relatedFinding &&
+                      relatedFinding.asset !==
+                        selectedControl.component_id
+                        ? "Finding Context · Different Asset"
+                        : "Finding Context"}
                     </p>
 
                     <h4>
@@ -636,6 +650,14 @@ function Controls() {
                     {relatedFinding ? (
                       <>
                         <div className="finding-context-grid">
+
+                          <div>
+                            <span>Affected Asset</span>
+                            <strong>
+                              {relatedFinding.asset ||
+                                "Global"}
+                            </strong>
+                          </div>
 
                           <div>
                             <span>Owner</span>

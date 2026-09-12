@@ -206,6 +206,148 @@ def banking_html_report_download():
         },
     )
 
+
+@app.post(
+    "/api/assessments/reassessment"
+)
+def compare_uploaded_assessments(
+    payload: dict,
+):
+    baseline_report = payload.get(
+        "baseline"
+    )
+
+    remediated_report = payload.get(
+        "remediated"
+    )
+
+    if not isinstance(
+        baseline_report,
+        dict,
+    ) or not isinstance(
+        remediated_report,
+        dict,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Baseline and remediated "
+                "assessment reports are required."
+            ),
+        )
+
+    baseline_architecture = (
+        baseline_report.get(
+            "summary",
+            {},
+        ).get(
+            "architecture"
+        )
+    )
+
+    remediated_architecture = (
+        remediated_report.get(
+            "summary",
+            {},
+        ).get(
+            "architecture"
+        )
+    )
+
+    if (
+        baseline_architecture
+        and remediated_architecture
+        and baseline_architecture
+        != remediated_architecture
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "The remediated file belongs to "
+                "a different architecture. "
+                f"Expected '{baseline_architecture}', "
+                f"received '{remediated_architecture}'."
+            ),
+        )
+
+    baseline_snapshot = (
+        create_assessment_snapshot(
+            baseline_report,
+            "A-001",
+        )
+    )
+
+    remediated_snapshot = (
+        create_assessment_snapshot(
+            remediated_report,
+            "A-002",
+        )
+    )
+
+    comparison = compare_assessments(
+        baseline_snapshot,
+        remediated_snapshot,
+    )
+
+    reconciliation = reconcile_findings(
+        baseline_report.get(
+            "findings",
+            [],
+        ),
+        remediated_report.get(
+            "findings",
+            [],
+        ),
+    )
+
+    lifecycle_summary = (
+        reconciliation_summary(
+            reconciliation
+        )
+    )
+
+    return {
+        "baseline": baseline_snapshot,
+        "remediated": remediated_snapshot,
+        "comparison": comparison,
+        "finding_lifecycle": (
+            lifecycle_summary
+        ),
+        "reconciliation": reconciliation,
+        "baseline_findings": (
+            baseline_report.get(
+                "findings",
+                [],
+            )
+        ),
+        "remediated_findings": (
+            remediated_report.get(
+                "findings",
+                [],
+            )
+        ),
+    }
+
+
+@app.post(
+    "/api/assessments/report",
+    response_class=HTMLResponse,
+)
+def current_assessment_html_report(
+    report: dict,
+):
+    try:
+        return generate_html_report(report)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Unable to generate assessment report: "
+                f"{exc}"
+            ),
+        )
+
+
 MAX_ARCHITECTURE_FILE_SIZE = 1024 * 1024
 ALLOWED_ARCHITECTURE_EXTENSIONS = {
     ".yaml",

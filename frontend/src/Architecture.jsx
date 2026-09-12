@@ -18,25 +18,47 @@ import {
 import {
   Background,
   Controls,
+  Position,
   ReactFlow,
 } from "@xyflow/react";
+
+import dagre from "@dagrejs/dagre";
 
 import "@xyflow/react/dist/style.css";
 import Footer from "./Footer";
 import Sidebar from "./Sidebar";
 import SharedHeader from "./SharedHeader";
 
+import { getCurrentAssessment } from "./assessmentStore";
+
 import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
 
-const zonePositions = {
-  internet: { x: 20, y: 160 },
-  dmz: { x: 260, y: 160 },
-  application: { x: 520, y: 80 },
-  data: { x: 800, y: 80 },
-  external: { x: 800, y: 260 },
-};
+const preferredZoneOrder = [
+  "untrusted_internet",
+  "internet",
+  "management",
+  "dmz",
+  "trusted_security",
+  "security",
+  "trusted_application",
+  "application",
+  "restricted_data",
+  "data",
+  "trusted_monitoring",
+  "monitoring",
+  "backup",
+  "untrusted_partner",
+  "external",
+];
+
+const formatZoneName = (zone = "application") =>
+  zone
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase()
+    );
 
 function SidebarItem({
   icon: Icon,
@@ -65,6 +87,14 @@ function Architecture() {
       setLoading(true);
       setError("");
 
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setReport(currentAssessment);
+        return;
+      }
+
       const response = await fetch(
         `${API_BASE}/api/demo/banking`
       );
@@ -91,110 +121,172 @@ function Architecture() {
   }, []);
 
   const nodes = useMemo(() => {
-    if (!report) {
+    const components =
+      report?.architecture?.components || [];
+
+    const flows =
+      report?.architecture?.data_flows || [];
+
+    if (!components.length) {
       return [];
     }
 
-    const zoneCounters = {};
+    const nodeWidth = 190;
+    const nodeHeight = 100;
 
-    return report.architecture.components.map(
-      (component) => {
-        const zone =
-          component.trust_zone || "application";
+    const graph = new dagre.graphlib.Graph()
+      .setDefaultEdgeLabel(() => ({}));
 
-        zoneCounters[zone] =
-          (zoneCounters[zone] || 0) + 1;
+    graph.setGraph({
+      rankdir: "LR",
+      ranker: "network-simplex",
+      acyclicer: "greedy",
+      ranksep: 150,
+      nodesep: 105,
+      edgesep: 65,
+      marginx: 50,
+      marginy: 50,
+    });
 
-        const base =
-          zonePositions[zone] ||
-          zonePositions.application;
+    components.forEach((component) => {
+      graph.setNode(component.id, {
+        width: nodeWidth,
+        height: nodeHeight,
+      });
+    });
 
-        const offset =
-          (zoneCounters[zone] - 1) * 150;
-
-        return {
-          id: component.id,
-
-          position: {
-            x: base.x,
-            y: base.y + offset,
-          },
-
-          data: {
-            label: (
-              <div className="rf-node-content">
-                <span>
-                  {component.type}
-                </span>
-
-                <strong>
-                  {component.name}
-                </strong>
-
-                <small>
-                  {component.trust_zone}
-                </small>
-
-                <div className="rf-tags">
-                  {component.internet_exposed && (
-                    <b>Internet</b>
-                  )}
-
-                  {component.stores_sensitive_data && (
-                    <b>Sensitive</b>
-                  )}
-                </div>
-              </div>
-            ),
-          },
-
-          className:
-            component.stores_sensitive_data
-              ? "rf-node rf-critical"
-              : component.internet_exposed
-                ? "rf-node rf-exposed"
-                : "rf-node",
-        };
+    flows.forEach((flow) => {
+      if (
+        graph.hasNode(flow.source) &&
+        graph.hasNode(flow.destination)
+      ) {
+        graph.setEdge(
+          flow.source,
+          flow.destination
+        );
       }
-    );
+    });
+
+    dagre.layout(graph);
+
+    return components.map((component) => {
+      const graphNode =
+        graph.node(component.id);
+
+      return {
+        id: component.id,
+
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+
+        position: {
+          x: graphNode.x - nodeWidth / 2,
+          y: graphNode.y - nodeHeight / 2,
+        },
+
+        data: {
+          label: (
+            <div className="rf-node-content">
+              <span>{component.type}</span>
+
+              <strong>
+                {component.name}
+              </strong>
+
+              <small>
+                {formatZoneName(
+                  component.trust_zone
+                )}
+              </small>
+
+              <div className="rf-tags">
+                {component.internet_exposed && (
+                  <b>Internet</b>
+                )}
+
+                {component.stores_sensitive_data && (
+                  <b>Sensitive</b>
+                )}
+              </div>
+            </div>
+          ),
+        },
+
+        className:
+          component.stores_sensitive_data
+            ? "rf-node rf-critical"
+            : component.internet_exposed
+              ? "rf-node rf-exposed"
+              : "rf-node",
+      };
+    });
   }, [report]);
 
   const edges = useMemo(() => {
-    if (!report) {
+    if (
+      !report?.architecture?.data_flows
+    ) {
       return [];
     }
 
     return report.architecture.data_flows.map(
-      (flow) => ({
-        id: flow.id,
-        source: flow.source,
-        target: flow.destination,
+      (flow, flowIndex) => {
+        const insecure =
+          !flow.encrypted ||
+          !flow.authentication ||
+          (
+            flow.sensitive_data &&
+            !flow.authorization_required
+          );
 
-        label:
-          flow.protocol +
-          (flow.sensitive_data
-            ? " • Sensitive"
-            : ""),
+        return {
+          id: flow.id,
+          source: flow.source,
+          target: flow.destination,
 
-        animated: flow.sensitive_data,
+          type: "default",
 
-        style: {
-          stroke: flow.sensitive_data
-            ? "#ef4444"
-            : "#3b82f6",
-          strokeWidth: 1.8,
-        },
+          pathOptions: {
+            curvature:
+              0.18 +
+              (flowIndex % 4) * 0.07,
+          },
 
-        labelStyle: {
-          fill: "#8390a0",
-          fontSize: 9,
-        },
+          label:
+            flow.protocol +
+            (flow.sensitive_data
+              ? " • Sensitive"
+              : ""),
 
-        labelBgStyle: {
-          fill: "#090d12",
-          fillOpacity: 0.95,
-        },
-      })
+          animated: true,
+
+          style: {
+            stroke: insecure
+              ? "#ef4444"
+              : "#3b82f6",
+            strokeWidth: insecure
+              ? 2
+              : 1.5,
+          },
+
+          labelStyle: {
+            fill: insecure
+              ? "#ff6b6b"
+              : "#8390a0",
+            fontSize: 9,
+          },
+
+          labelBgStyle: {
+            fill: "#080c11",
+            fillOpacity: 0.9,
+          },
+
+          labelBgPadding: [
+            5,
+            3,
+          ],
+        };
+      }
     );
   }, [report]);
 
@@ -288,7 +380,7 @@ function Architecture() {
 
               <div>
                 <GitBranch size={18} />
-                <span>Trust Boundaries</span>
+                <span>Boundary Crossings</span>
                 <strong>
                   {summary.trust_boundaries}
                 </strong>
@@ -366,7 +458,7 @@ function Architecture() {
                         key={zone}
                       >
                         <span className="zone-dot" />
-                        <strong>{zone}</strong>
+                        <strong>{formatZoneName(zone)}</strong>
 
                         <small>
                           {

@@ -39,6 +39,9 @@ import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
 
+const CURRENT_ASSESSMENT_KEY =
+  "threatmodel-current-assessment";
+
 
 function SidebarItem({
   icon: Icon,
@@ -55,6 +58,61 @@ function SidebarItem({
       <span>{label}</span>
     </Link>
   );
+}
+
+
+function calculateAverageCoverage(
+  attackPaths
+) {
+  if (!attackPaths?.length) {
+    return 0;
+  }
+
+  const total = attackPaths.reduce(
+    (sum, path) =>
+      sum +
+      (
+        path.control_summary
+          ?.coverage_percentage ?? 0
+      ),
+    0
+  );
+
+  return Math.round(
+    (total / attackPaths.length) * 10
+  ) / 10;
+}
+
+
+function calculateHighestResidualRisk(
+  attackPaths
+) {
+  return Math.max(
+    0,
+    ...(
+      attackPaths || []
+    ).map(
+      (path) =>
+        path.residual_path_risk ?? 0
+    )
+  );
+}
+
+
+function getArchitectureIcon(
+  componentType
+) {
+  const icons = {
+    client: Smartphone,
+    gateway: Server,
+    service: UsersRound,
+    security_service: KeyRound,
+    database: Database,
+    storage: Database,
+    external_service: Cloud,
+  };
+
+  return icons[componentType] || Boxes;
 }
 
 
@@ -141,6 +199,15 @@ const [report, setReport] = useState(null);
       setReport(result);
       setRemediated(null);
 
+      localStorage.setItem(
+        CURRENT_ASSESSMENT_KEY,
+        JSON.stringify(result)
+      );
+
+      localStorage.removeItem(
+        "threatmodel-current-reassessment"
+      );
+
       setAssessmentMessage(
         `Assessment complete: ${
           result.summary?.threats ?? 0
@@ -208,6 +275,38 @@ const [report, setReport] = useState(null);
 
 
   useEffect(() => {
+    const savedAssessment =
+      localStorage.getItem(
+        CURRENT_ASSESSMENT_KEY
+      );
+
+    if (savedAssessment) {
+      try {
+        const parsedAssessment =
+          JSON.parse(savedAssessment);
+
+        setReport(parsedAssessment);
+        setRemediated(null);
+
+        setAssessmentMessage(
+          `Current assessment restored: ${
+            parsedAssessment.summary?.threats ??
+            0
+          } threats and ${
+            parsedAssessment.findings?.length ??
+            0
+          } findings identified.`
+        );
+
+        setLoading(false);
+        return;
+      } catch {
+        localStorage.removeItem(
+          CURRENT_ASSESSMENT_KEY
+        );
+      }
+    }
+
     loadAssessment();
   }, []);
 
@@ -257,19 +356,34 @@ const [report, setReport] = useState(null);
 
 
   const baselineCoverage =
-    highestPath?.control_summary
-      ?.coverage_percentage ?? 0;
+    calculateAverageCoverage(
+      attackPaths
+    );
 
   const baselineResidual =
-    highestPath?.residual_path_risk ?? 0;
+    calculateHighestResidualRisk(
+      attackPaths
+    );
+
+  const remediatedAttackPaths =
+    remediated?.attack_paths || [];
+
+  const hasRemediatedAssessment =
+    remediatedAttackPaths.length > 0;
 
   const currentCoverage =
-    remediatedHighestPath?.control_summary
-      ?.coverage_percentage ?? 0;
+    hasRemediatedAssessment
+      ? calculateAverageCoverage(
+          remediatedAttackPaths
+        )
+      : null;
 
   const currentResidual =
-    remediatedHighestPath
-      ?.residual_path_risk ?? 0;
+    hasRemediatedAssessment
+      ? calculateHighestResidualRisk(
+          remediatedAttackPaths
+        )
+      : null;
 
 
   const openFindings =
@@ -432,9 +546,9 @@ const [report, setReport] = useState(null);
             <FileText size={17} />
 
             <span>
-              {selectedFile
-                ? selectedFile.name
-                : "Select architecture file"}
+              {selectedFile?.name ||
+                report?.source?.filename ||
+                "Select architecture file"}
             </span>
 
             <small>YAML / YML / JSON</small>
@@ -718,86 +832,96 @@ const [report, setReport] = useState(null);
                   </div>
 
 
-                  <div className="dashboard-v3-architecture-canvas">
+                  <div className="dashboard-v3-architecture-canvas dashboard-dynamic-canvas">
 
-                    <div className="dashboard-arch-node internet">
-                      <Globe2 size={23} strokeWidth={1.9} />
-                      <span>Internet</span>
-                    </div>
+                    <div className="dashboard-dynamic-components">
 
-                    <div className="dashboard-arch-arrow a1">
-                      →
-                    </div>
+                      {report.architecture?.components?.map(
+                        (component) => {
+                          const Icon =
+                            getArchitectureIcon(
+                              component.type
+                            );
 
+                          const isCritical =
+                            component.criticality ===
+                              "critical" ||
+                            component.criticality ===
+                              "high";
 
-                    <div className="dashboard-arch-node mobile">
-                      <Smartphone size={22} strokeWidth={1.9} />
+                          return (
+                            <article
+                              key={component.id}
+                              className={`dashboard-dynamic-node ${
+                                isCritical
+                                  ? "critical"
+                                  : ""
+                              }`}
+                            >
+                              <div className="dashboard-dynamic-node-icon">
+                                <Icon
+                                  size={21}
+                                  strokeWidth={1.9}
+                                />
+                              </div>
 
-                      <strong>
-                        Mobile Banking Client
-                      </strong>
-                    </div>
+                              <div>
+                                <strong>
+                                  {component.name}
+                                </strong>
 
+                                <span>
+                                  {component.type
+                                    .replaceAll(
+                                      "_",
+                                      " "
+                                    )}
+                                </span>
+                              </div>
 
-                    <div className="dashboard-arch-arrow a2">
-                      →
-                    </div>
-
-
-                    <div className="dashboard-arch-node gateway critical">
-                      <Server size={23} strokeWidth={1.9} />
-
-                      <strong>
-                        API Gateway
-                      </strong>
-                    </div>
-
-
-                    <div className="dashboard-arch-node auth">
-                      <KeyRound size={22} strokeWidth={1.9} />
-
-                      <strong>
-                        Authentication Service
-                      </strong>
-                    </div>
-
-
-                    <div className="dashboard-arch-node api">
-                      <UsersRound size={22} strokeWidth={1.9} />
-
-                      <strong>
-                        Banking API
-                      </strong>
-                    </div>
-
-
-                    <div className="dashboard-arch-node provider">
-
-                      <Cloud size={23} strokeWidth={1.9} />
-
-                      <strong>
-                        Third-Party Provider
-                      </strong>
+                              <small>
+                                {component.trust_zone}
+                              </small>
+                            </article>
+                          );
+                        }
+                      )}
 
                     </div>
 
 
-                    <div className="dashboard-arch-node database critical">
+                    <div className="dashboard-dynamic-flows">
 
-                      <Database size={24} strokeWidth={1.9} />
+                      {report.architecture?.data_flows?.map(
+                        (flow) => (
+                          <div
+                            key={flow.id}
+                            className={`dashboard-flow-item ${
+                              !flow.encrypted ||
+                              !flow.authentication ||
+                              !flow.authorization_required
+                                ? "insecure"
+                                : ""
+                            }`}
+                          >
+                            <span>
+                              {flow.source}
+                            </span>
 
-                      <strong>
-                        Customer Database
-                      </strong>
+                            <b>→</b>
+
+                            <span>
+                              {flow.destination}
+                            </span>
+
+                            <small>
+                              {flow.protocol}
+                            </small>
+                          </div>
+                        )
+                      )}
 
                     </div>
-
-
-                    <div className="dashboard-connector gateway-auth" />
-                    <div className="dashboard-connector gateway-api" />
-                    <div className="dashboard-connector api-db" />
-                    <div className="dashboard-connector gateway-provider" />
-                    <div className="dashboard-connector provider-db" />
 
                   </div>
 
@@ -1119,20 +1243,29 @@ const [report, setReport] = useState(null);
 
                     <div>
                       <h2>
-                        Assessment Comparison
+                        {hasRemediatedAssessment
+                          ? "Assessment Comparison"
+                          : "Current Assessment Snapshot"}
                       </h2>
 
                       <p>
-                        Track your security posture over time
+                        {hasRemediatedAssessment
+                          ? "Track your security posture over time"
+                          : "Current uploaded architecture security posture"}
                       </p>
                     </div>
 
-
                     <Link
-                      to="/reassessment"
+                      to={
+                        hasRemediatedAssessment
+                          ? "/reassessment"
+                          : "/findings"
+                      }
                       className="dashboard-v3-link"
                     >
-                      View History →
+                      {hasRemediatedAssessment
+                        ? "View History →"
+                        : "Review Findings →"}
                     </Link>
 
                   </div>
@@ -1140,89 +1273,100 @@ const [report, setReport] = useState(null);
 
                   <div className="dashboard-v3-comparison-grid">
 
-
                     <div>
-
                       <span>
                         Control Coverage
                       </span>
 
                       <section>
-
                         <strong>
                           {baselineCoverage}%
                         </strong>
 
-                        <b>→</b>
+                        {hasRemediatedAssessment && (
+                          <>
+                            <b>→</b>
 
-                        <strong className="good">
-                          {currentCoverage}%
-                        </strong>
-
+                            <strong className="good">
+                              {currentCoverage}%
+                            </strong>
+                          </>
+                        )}
                       </section>
 
                       <small>
-                        Baseline → Remediated
+                        {hasRemediatedAssessment
+                          ? "Baseline → Remediated"
+                          : "Average across attack paths"}
                       </small>
-
                     </div>
 
 
                     <div>
-
                       <span>
                         Highest Residual Risk
                       </span>
 
                       <section>
-
                         <strong>
                           {baselineResidual}/25
                         </strong>
 
-                        <b>→</b>
+                        {hasRemediatedAssessment && (
+                          <>
+                            <b>→</b>
 
-                        <strong className="good">
-                          {currentResidual}/25
-                        </strong>
-
+                            <strong className="good">
+                              {currentResidual}/25
+                            </strong>
+                          </>
+                        )}
                       </section>
 
                       <small>
-                        Baseline → Remediated
+                        {hasRemediatedAssessment
+                          ? "Baseline → Remediated"
+                          : "Current residual exposure"}
                       </small>
-
                     </div>
 
 
                     <div>
-
                       <span>
-                        Findings
+                        Open Findings
                       </span>
 
                       <section>
-
                         <strong>
-                          {findings.length}
+                          {openFindings}
                         </strong>
 
-                        <b>→</b>
+                        {hasRemediatedAssessment && (
+                          <>
+                            <b>→</b>
 
-                        <strong className="good">
-                          {
-                            remediated
-                              ?.findings
-                              ?.length ?? 0
-                          }
-                        </strong>
-
+                            <strong className="good">
+                              {
+                                remediated.findings
+                                  ?.filter(
+                                    (finding) =>
+                                      !finding.status ||
+                                      finding.status
+                                        .toLowerCase() !==
+                                        "resolved"
+                                  )
+                                  .length ?? 0
+                              }
+                            </strong>
+                          </>
+                        )}
                       </section>
 
                       <small>
-                        Open findings
+                        {hasRemediatedAssessment
+                          ? "Baseline → Remediated"
+                          : "Requires remediation"}
                       </small>
-
                     </div>
 
                   </div>

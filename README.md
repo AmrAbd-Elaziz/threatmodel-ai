@@ -1,293 +1,142 @@
 # ThreatModel AI
 
-### Enterprise Security Architecture & Continuous Threat Modeling Platform
+### Architecture-Driven Threat Modeling & Continuous Security Assessment
 
-ThreatModel AI is an architecture-driven security engineering platform for identifying threats, analyzing attack paths, evaluating security controls, prioritizing risk, tracking remediation findings, and measuring security posture across repeated assessments.
+ThreatModel AI is a full-stack security engineering platform that converts architecture definitions into explainable threat models, attack paths, control assessments, remediation findings, reassessment comparisons, and exportable security reports.
 
-Rather than treating threat modeling as a static STRIDE checklist, the platform builds a security model from system components, data flows, trust zones, sensitive assets, and declared controls — then uses that context to identify plausible architecture attack paths and measure how remediation changes residual risk.
+The platform accepts YAML, YML, or JSON architecture files and updates every analysis page from the uploaded project. Risk decisions are produced by a deterministic, testable analysis engine rather than an external LLM.
 
-> **Current implementation:** deterministic security analysis engine with an AI-ready architecture.  
-> The project does not use an external LLM to make risk decisions.
-
----
-
-## Why This Project Exists
-
-Traditional threat models often become static documents that are difficult to maintain as architectures and security controls change.
-
-ThreatModel AI explores a more continuous workflow:
-
-```text
-Architecture
-     ↓
-Security Context
-     ↓
-STRIDE Threat Analysis
-     ↓
-Attack Path Discovery
-     ↓
-Inherent Risk
-     ↓
-Existing Control Assessment
-     ↓
-Control Gaps
-     ↓
-Estimated Residual Risk
-     ↓
-Security Findings
-     ↓
-Owner + SLA + Remediation
-     ↓
-Reassessment
-     ↓
-Security Posture Trend
-```
-
-The goal is to connect **security architecture review, threat modeling, control validation, and remediation tracking** in one explainable workflow.
+> ThreatModel AI models plausible architecture-level security scenarios. It does not claim confirmed exploitability or validated production control effectiveness.
 
 ---
 
-## Core Capabilities
+## What It Does
 
-### Architecture-Driven Threat Modeling
+- Parses components, data flows, trust zones, exposure, criticality, and data classification.
+- Generates contextual STRIDE threats across the supplied architecture.
+- Discovers attack paths from exposed entry points to critical or sensitive assets.
+- Calculates inherent threat risk and architecture path risk on a 5×5 model.
+- Evaluates implemented, partial, and missing security controls.
+- Estimates residual risk from declared control status and effectiveness.
+- Creates stable remediation findings with owners, priorities, SLAs, and due dates.
+- Reconciles findings across assessments as new, still open, resolved, or reopened.
+- Produces machine-readable JSON and portable HTML assessment reports.
 
-Models security context including:
+---
 
-- Components and services
-- Data flows
-- Trust zones
-- Internet exposure
-- Sensitive-data flows
-- Asset criticality
-- Data classification
-- Existing security controls
+## Platform Workflow
 
-The engine applies STRIDE-oriented threat analysis using architecture context rather than generating generic threat lists.
-
-### Attack Path Analysis
-
-ThreatModel AI discovers plausible paths from exposed entry points toward critical assets.
-
-Example from the built-in synthetic banking architecture:
-
-```text
-API Gateway
-     ↓
-Banking API
-     ↓
-Customer Database
-```
-
-The path crosses multiple trust boundaries and reaches a critical asset containing restricted data.
-
-The current model scores this architecture path at:
-
-```text
-Inherent Path Risk: 23/25 — CRITICAL — P1
-```
-
-Attack paths represent **architecture-level security scenarios**, not confirmed exploit chains.
-
-### Control-Aware Residual Risk
-
-Recommended controls are compared with declared existing controls.
-
-Control states include:
-
-```text
-Implemented
-Partial
-Missing
-```
-
-Control effectiveness is also considered when calculating coverage.
-
-Example baseline:
-
-```text
-Inherent Path Risk       23/25
-Control Coverage         47.9%
-Estimated Residual Risk  12/25
-Residual Priority        P3
-```
-
-Residual risk is an **estimate based on declared control implementation and effectiveness**, not a validated production measurement.
-
-### Security Findings & Remediation
-
-Control gaps become trackable security findings containing:
-
-- Stable finding fingerprint
-- Affected asset
-- Required control
-- Priority
-- Finding status
-- Assigned owner
-- SLA
-- Due date
-- Remediation guidance
-- Estimated residual risk
-
-Example:
-
-```text
-Finding       Control                        Owner
----------------------------------------------------------------
-GAP-...       Input Validation               Application Team
-GAP-...       Availability Protection        Platform Engineering Team
-```
-
-Finding identities remain stable across assessments, allowing the platform to distinguish:
-
-```text
-New
-Still Open
-Resolved
-Reopened
-```
-
-### Continuous Reassessment
-
-ThreatModel AI can compare security posture before and after remediation.
-
-Built-in demonstration:
-
-| Metric | A-001 Baseline | A-002 After Remediation |
-|---|---:|---:|
-| Control Coverage | 47.9% | 75.0% |
-| Highest Residual Risk | 12/25 | 6/25 |
-| Open Findings | 4 | 2 |
-| Security Trend | — | Improved |
-
-Remediation of Least Privilege and Authorization Enforcement results in:
-
-```text
-Risk Change:      -6
-Coverage Change:  +27.1%
-
-Resolved:         2
-Still Open:       2
-New:              0
-Reopened:         0
-```
-
-This creates an auditable security engineering story:
-
-```text
-Identify → Prioritize → Remediate → Reassess → Measure
+```mermaid
+flowchart TD
+    A[Architecture File] --> B[Parser and Validation]
+    B --> C[Security Context]
+    C --> D[STRIDE Threat Analysis]
+    D --> E[Attack Path Discovery]
+    E --> F[Inherent Risk Scoring]
+    F --> G[Control Assessment]
+    G --> H[Residual Risk and Findings]
+    H --> I[Reassessment and Lifecycle]
+    I --> J[HTML and JSON Reports]
 ```
 
 ---
 
-## Security Dashboard
+## Application Pages
 
-The Streamlit dashboard provides:
-
-- Architecture overview
-- Architecture graph
-- Trust-boundary visualization
-- Highest-risk attack path
-- Attack-path risk drivers
-- Control coverage
-- Control-gap analysis
-- STRIDE threat distribution
-- Priority distribution
-- Interactive 5×5 risk matrix
-- Threat register and filtering
-- Security findings
-- Finding ownership and SLA
-- Remediation guidance
-- Continuous assessment comparison
-- Finding lifecycle reconciliation
-- JSON and HTML assessment reports
+| Page | Purpose |
+|---|---|
+| Dashboard | Executive posture, key metrics, highest-risk path, risk matrix, and recent findings |
+| Architecture Intelligence | Interactive system graph, trust zones, sensitive assets, flows, and component inventory |
+| Threat Intelligence | STRIDE distribution, 5×5 matrix, priorities, threat ranking, filters, and threat register |
+| Attack Path Analysis | Entry-to-asset paths, risk drivers, boundary crossings, node context, and residual exposure |
+| Control Assessment | Required controls, declared implementation, effectiveness, coverage, and path relevance |
+| Security Findings | Prioritized remediation queue, ownership, SLA, due date, and remediation guidance |
+| Reassessment Center | Baseline/remediated comparison and finding lifecycle reconciliation |
+| Assessment Reports | Current metrics, evidence navigation, JSON export, and portable HTML reporting |
 
 ---
 
-## Built-In Banking Scenario
+## Architecture Model
 
-The repository includes a completely synthetic cloud banking architecture for demonstrating the analysis workflow.
+An assessment file describes the architecture rather than a pre-generated list of findings.
 
-### Architecture
+```yaml
+name: Example Commerce Platform
 
-```text
-Mobile Banking Client
-        ↓
-    API Gateway
-      ↙     ↘
-Auth Service  Banking API
-                  ↓
-          Customer Database
-                  ↓
-       Third-Party Payment Provider
+components:
+  - id: api-gateway
+    name: Public API Gateway
+    type: gateway
+    trust_zone: dmz
+    internet_exposed: true
+    criticality: critical
+    data_classification: confidential
+
+  - id: customer-db
+    name: Customer Database
+    type: database
+    trust_zone: restricted_data
+    stores_sensitive_data: true
+    criticality: critical
+    data_classification: restricted
+
+data_flows:
+  - id: flow-001
+    source: api-gateway
+    destination: customer-db
+    protocol: TLS
+    encrypted: true
+    authentication: true
+    sensitive_data: true
+    authorization_required: true
+
+existing_controls:
+  - id: TM-C003
+    name: Integrity Protection
+    status: implemented
+    effectiveness: high
+    component_id: api-gateway
 ```
 
-Example trust zones:
-
-```text
-Internet
-DMZ
-Application
-Data
-External
-```
-
-The Customer Database is modeled as a:
-
-```text
-Criticality:        CRITICAL
-Data Classification: RESTRICTED
-```
-
-No real employer, customer, production configuration, or confidential infrastructure data is included.
+Supported control states include `implemented`, `partial`, and `missing`. Trust-zone names are project-defined, allowing trusted, untrusted, restricted, external, management, application, and other architecture-specific zones.
 
 ---
 
-## V2 Security Analysis Flow
+## Risk and Findings Model
 
-```text
-YAML Architecture
-       │
-       ▼
-┌──────────────────────┐
-│ Architecture Parser  │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Trust Boundary Model │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ STRIDE Threat Engine │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Attack Path Engine   │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Path Risk Scoring    │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Control Assessment   │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Finding Generation   │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Reassessment Engine  │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ Assessment History   │
-└──────────┬───────────┘
-           ▼
-┌──────────────────────┐
-│ SQLite Persistence   │
-└──────────────────────┘
-```
+ThreatModel AI separates three related measurements:
+
+| Measurement | Meaning |
+|---|---|
+| Inherent Threat Risk | Likelihood × impact for an individual STRIDE threat |
+| Inherent Path Risk | Architecture-level exposure before accounting for declared controls |
+| Residual Path Risk | Estimated exposure after declared control status and effectiveness |
+
+Finding priority is assigned independently for each control gap using its affected asset, path exposure, control context, and risk. A finding generated during an assessment starts open; lifecycle states appear when a baseline is compared with a later assessment.
+
+---
+
+## Technology Stack
+
+### Analysis Engine and API
+
+- Python
+- FastAPI
+- Pydantic
+- PyYAML
+- Uvicorn
+- SQLite assessment persistence
+- Pytest
+
+### Web Application
+
+- React 19
+- Vite
+- React Router
+- React Flow
+- Dagre automatic graph layout
+- Lucide React
+- Oxlint
 
 ---
 
@@ -295,35 +144,25 @@ YAML Architecture
 
 ```text
 threatmodel-ai/
-│
-├── core/
+├── api/                    # FastAPI application and assessment endpoints
+├── core/                   # Deterministic security analysis engine
 │   ├── attack_paths.py
 │   ├── attack_path_risk.py
-│   ├── control_assessment.py
-│   ├── findings.py
-│   ├── finding_lifecycle.py
-│   ├── finding_reconciliation.py
-│   ├── reassessment.py
-│   ├── assessment_history.py
-│   ├── assessment_workflow.py
-│   ├── storage.py
-│   ├── threats.py
-│   ├── risk.py
-│   ├── controls.py
 │   ├── boundaries.py
-│   ├── reporting.py
+│   ├── control_assessment.py
+│   ├── finding_reconciliation.py
+│   ├── findings.py
 │   ├── parser.py
-│   ├── models.py
-│   └── service.py
-│
-├── data/
-│   ├── banking_architecture.yaml
-│   └── banking_architecture_remediated.yaml
-│
-├── tests/
-│   └── ...
-│
-├── streamlit_app.py
+│   ├── reassessment.py
+│   ├── reporting.py
+│   ├── risk.py
+│   ├── service.py
+│   └── threats.py
+├── data/                   # Synthetic example architectures
+├── frontend/               # React/Vite web application
+├── reports/                # Generated assessment evidence
+├── rules/                  # Security-control definitions
+├── tests/                  # Engine and workflow tests
 ├── requirements.txt
 └── README.md
 ```
@@ -332,154 +171,114 @@ threatmodel-ai/
 
 ## Run Locally
 
-Clone the repository:
+### Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- npm
+
+### 1. Clone and prepare the backend
 
 ```bash
-git clone https://github.com/AmrAbd-Elaziz/threatmodel-ai.git
+git clone https://github.com/YOUR-USERNAME/threatmodel-ai.git
 cd threatmodel-ai
-```
 
-Create a virtual environment:
-
-```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
-Run the dashboard:
+### 2. Start the FastAPI service
 
 ```bash
-streamlit run streamlit_app.py
+uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Then open the local Streamlit URL displayed in the terminal.
+Verify the service:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Interactive API documentation is available at:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 3. Start the React application
+
+Open a second terminal:
+
+```bash
+cd threatmodel-ai/frontend
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173
+```
 
 ---
 
-## Run the Test Suite
+## Validation
+
+Run the Python test suite:
 
 ```bash
+cd threatmodel-ai
+source .venv/bin/activate
 pytest -q
 ```
 
-Current V2 test suite:
+Validate the frontend:
 
-```text
-83 passed
+```bash
+cd threatmodel-ai/frontend
+npm run lint
+npm run build
 ```
 
-Tests cover the core security workflow including:
+---
 
-- Architecture parsing
-- Threat analysis
-- Risk scoring
-- Trust-boundary analysis
-- Attack-path discovery
-- Attack-path risk scoring
-- Control assessment
-- Finding generation
-- Stable finding identities
-- Finding lifecycle
-- Finding reconciliation
-- Reassessment
-- Assessment history
-- SQLite persistence
-- End-to-end assessment workflow
+## Reassessment Workflow
+
+1. Upload a baseline architecture and run the assessment.
+2. Review threats, attack paths, control gaps, and open findings.
+3. Update the architecture file with remediated flows or controls.
+4. Upload the remediated version in the Reassessment Center.
+5. Compare coverage, residual risk, and finding lifecycle changes.
+6. Export the updated evidence as HTML or JSON.
+
+Stable finding fingerprints allow equivalent gaps to be reconciled between assessments instead of being recreated as unrelated records.
 
 ---
 
-## Risk Model
+## Security and Data Statement
 
-Threat risk uses a 5×5 likelihood and impact model:
-
-```text
-Risk = Likelihood × Impact
-```
-
-Maximum inherent threat risk:
-
-```text
-5 × 5 = 25
-```
-
-Attack-path scoring additionally considers architecture context such as:
-
-- Threat exposure
-- Internet-accessible entry points
-- Asset criticality
-- Data classification
-- Trust-boundary crossings
-- Authentication weaknesses
-- Encryption weaknesses
-- Authorization weaknesses
-- Sensitive-data flows
-
-This produces a normalized path risk up to `25`.
+- Included example architectures are synthetic and contain no employer or customer infrastructure data.
+- Uploaded architecture data is used for the active assessment workflow.
+- Scores are deterministic estimates derived from declared architecture and control state.
+- Attack paths are plausible security scenarios, not proof of compromise.
+- Production use requires independent validation, authentication, authorization, secure storage, deployment hardening, and organizational risk calibration.
 
 ---
 
-## Engineering Principles
+## Current Status
 
-ThreatModel AI follows several security engineering principles:
+ThreatModel AI V2 currently includes the end-to-end assessment workflow, dynamic project uploads, interactive architecture visualization, STRIDE analysis, attack-path scoring, control assessment, finding management, reassessment, persistence, and report export.
 
-**Deterministic before generative**  
-Core risk decisions are explainable and reproducible.
-
-**Architecture context matters**  
-Risk is evaluated using assets, flows, exposure, trust boundaries, and data sensitivity.
-
-**Controls change risk**  
-Existing control implementation and effectiveness affect estimated residual risk.
-
-**Findings need ownership**  
-Security issues are connected to owners, SLA targets, and remediation guidance.
-
-**Security is continuous**  
-A threat model should support reassessment rather than remain a static document.
-
----
-
-## Current Scope
-
-V2 focuses on the core security-engineering workflow.
-
-Future architecture can support additional enterprise capabilities such as:
-
-- OpenAPI architecture discovery
-- Terraform analysis
-- Kubernetes manifest analysis
-- Draw.io architecture imports
-- Multiple architecture versions
-- Project and workspace isolation
-- RBAC
-- Audit trails
-- External issue-tracker integrations
-- AI-assisted architecture review and threat explanation
-
-These capabilities are not represented as implemented features in the current version.
-
----
-
-## Disclaimer
-
-ThreatModel AI is a security engineering and educational project.
-
-Risk scores, attack paths, control coverage, and residual-risk estimates are generated from the architecture and control information supplied to the platform.
-
-They should support — not replace — manual security architecture review, penetration testing, vulnerability validation, and professional risk assessment.
-
-The built-in banking architecture is synthetic and contains no real production or customer information.
+Planned production-hardening work includes authenticated workspaces, organization-specific rule packs, deployment configuration, audit logging, and CI/CD security automation.
 
 ---
 
 ## Author
 
 **Amr Abdelaziz**  
-Cybersecurity Engineer — Security Engineering · Vulnerability Management · Application & Infrastructure Security
+Cybersecurity Engineer — Security Architecture, Security Products, Vulnerability Management, and DevSecOps
+
+[LinkedIn](https://www.linkedin.com/in/amr-ahmed-abdelaziz94) · [GitHub](https://github.com/AmrAbd-Elaziz)
 

@@ -24,6 +24,43 @@ import "./index.css";
 
 const API_BASE = "http://127.0.0.1:8000";
 
+const CURRENT_ASSESSMENT_KEY =
+  "threatmodel-current-assessment";
+
+function calculateAverageCoverage(
+  attackPaths
+) {
+  if (!attackPaths?.length) {
+    return 0;
+  }
+
+  const total = attackPaths.reduce(
+    (sum, path) =>
+      sum +
+      (
+        path.control_summary
+          ?.coverage_percentage ?? 0
+      ),
+    0
+  );
+
+  return Math.round(
+    (total / attackPaths.length) * 10
+  ) / 10;
+}
+
+function calculateHighestResidualRisk(
+  attackPaths
+) {
+  return Math.max(
+    0,
+    ...(attackPaths || []).map(
+      (path) =>
+        path.residual_path_risk ?? 0
+    )
+  );
+}
+
 function SidebarItem({
   icon: Icon,
   label,
@@ -56,6 +93,43 @@ function Reports() {
     try {
       setLoading(true);
       setError("");
+
+      const savedAssessment =
+        localStorage.getItem(
+          CURRENT_ASSESSMENT_KEY
+        );
+
+      if (savedAssessment) {
+        const parsedAssessment =
+          JSON.parse(savedAssessment);
+
+        setReport(parsedAssessment);
+
+        const savedReassessment =
+          localStorage.getItem(
+            "threatmodel-current-reassessment"
+          );
+
+        if (savedReassessment) {
+          try {
+            setReassessment(
+              JSON.parse(
+                savedReassessment
+              )
+            );
+          } catch {
+            localStorage.removeItem(
+              "threatmodel-current-reassessment"
+            );
+
+            setReassessment(null);
+          }
+        } else {
+          setReassessment(null);
+        }
+
+        return;
+      }
 
       const [
         reportResponse,
@@ -141,14 +215,113 @@ function Reports() {
     URL.revokeObjectURL(url);
   }
 
+  async function exportHtml(
+    shouldDownload
+  ) {
+    if (!report) {
+      return;
+    }
+
+    const previewWindow =
+      shouldDownload
+        ? null
+        : window.open("", "_blank");
+
+    try {
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE}/api/assessments/report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(report),
+        }
+      );
+
+      if (!response.ok) {
+        const result =
+          await response.json();
+
+        throw new Error(
+          result.detail ||
+          "Unable to generate HTML report."
+        );
+      }
+
+      const blob = await response.blob();
+      const url =
+        URL.createObjectURL(blob);
+
+      if (shouldDownload) {
+        const anchor =
+          document.createElement("a");
+
+        const architectureName = (
+          report.summary?.architecture ||
+          "assessment"
+        )
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+
+        anchor.href = url;
+        anchor.download =
+          `${architectureName}-threat-report.html`;
+
+        anchor.click();
+
+        setTimeout(
+          () => URL.revokeObjectURL(url),
+          1000
+        );
+      } else if (previewWindow) {
+        previewWindow.location.href = url;
+      }
+    } catch (err) {
+      if (previewWindow) {
+        previewWindow.close();
+      }
+
+      setError(
+        err.message ||
+        "Unable to export HTML report."
+      );
+    }
+  }
+
+
   const summary =
     report?.summary || {};
 
-  const baseline =
-    reassessment?.baseline || {};
+  const hasReassessment = Boolean(
+    reassessment?.baseline &&
+    reassessment?.remediated
+  );
 
-  const current =
-    reassessment?.remediated || {};
+  const currentSnapshot = {
+    average_control_coverage:
+      calculateAverageCoverage(
+        report?.attack_paths || []
+      ),
+    highest_residual_risk:
+      calculateHighestResidualRisk(
+        report?.attack_paths || []
+      ),
+    finding_count:
+      report?.findings?.length || 0,
+  };
+
+  const baseline = hasReassessment
+    ? reassessment.baseline
+    : currentSnapshot;
+
+  const current = hasReassessment
+    ? reassessment.remediated
+    : currentSnapshot;
 
   const comparison =
     reassessment?.comparison || {};
@@ -300,7 +473,9 @@ function Reports() {
                       </p>
 
                       <h3>
-                        Baseline → Current
+                        {hasReassessment
+                          ? "Baseline → Current"
+                          : "Current Assessment Snapshot"}
                       </h3>
                     </div>
 
@@ -382,7 +557,9 @@ function Reports() {
                       <div>
                         <span>Trend</span>
                         <strong className="good-text">
-                          {comparison.trend || "—"}
+                          {hasReassessment
+                          ? comparison.trend || "—"
+                          : "Not run"}
                         </strong>
                       </div>
                     </div>
@@ -408,11 +585,10 @@ function Reports() {
 
                   <div className="report-export-actions">
 
-                    <a
+                    <button
+                      type="button"
                       className="report-export-action primary"
-                      href={`${API_BASE}/api/demo/banking/report`}
-                      target="_blank"
-                      rel="noreferrer"
+                      onClick={() => exportHtml(false)}
                     >
                       <div className="report-export-icon">
                         <FileText size={21} />
@@ -429,12 +605,13 @@ function Reports() {
                       </div>
 
                       <ExternalLink size={17} />
-                    </a>
+                    </button>
 
 
-                    <a
+                    <button
+                      type="button"
                       className="report-export-action"
-                      href={`${API_BASE}/api/demo/banking/report/download`}
+                      onClick={() => exportHtml(true)}
                     >
                       <div className="report-export-icon">
                         <Download size={21} />
@@ -451,7 +628,7 @@ function Reports() {
                       </div>
 
                       <Download size={17} />
-                    </a>
+                    </button>
 
 
                     <button
@@ -610,7 +787,9 @@ function Reports() {
                     <div>
                       <span>Reassessment</span>
                       <strong>
-                        {comparison.trend || "—"}
+                        {hasReassessment
+                          ? comparison.trend || "—"
+                          : "Not run"}
                       </strong>
                     </div>
 

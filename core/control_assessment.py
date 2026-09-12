@@ -114,6 +114,12 @@ def assess_attack_path_controls(
                         effective_score,
                         2,
                     ),
+                    "control_effectiveness": float(
+                        required.get(
+                            "effectiveness",
+                            0.25,
+                        )
+                    ),
                 }
             )
 
@@ -133,6 +139,12 @@ def assess_attack_path_controls(
                         "architecture assessment."
                     ),
                     "effective_score": 0.0,
+                    "control_effectiveness": float(
+                        required.get(
+                            "effectiveness",
+                            0.25,
+                        )
+                    ),
                 }
             )
 

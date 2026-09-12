@@ -16670,3 +16670,401 @@ body.sidebar-is-collapsed
     0 !important;
 }
 
+/* ==========================================================
+   DASHBOARD DYNAMIC ARCHITECTURE
+   ========================================================== */
+
+.dashboard-dynamic-canvas {
+  height: auto !important;
+  min-height: 370px;
+
+  padding:
+    22px !important;
+
+  display: flex !important;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboard-dynamic-components {
+  flex: 1;
+
+  display: grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(185px, 1fr)
+    );
+
+  align-content: center;
+  gap: 13px;
+}
+
+.dashboard-dynamic-node {
+  position: relative;
+
+  min-height: 76px;
+  padding:
+    13px
+    12px;
+
+  display: grid;
+  grid-template-columns:
+    37px
+    minmax(0, 1fr);
+  align-items: center;
+  gap:
+    3px
+    10px;
+
+  border:
+    1px solid
+    #334252;
+
+  border-radius: 9px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(14, 22, 30, .96),
+      rgba(8, 13, 19, .96)
+    );
+
+  color: #d9e2ec;
+
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.dashboard-dynamic-node:hover {
+  transform:
+    translateY(-2px);
+
+  border-color:
+    #278fdb;
+
+  box-shadow:
+    0 8px 22px
+    rgba(0,0,0,.24);
+}
+
+.dashboard-dynamic-node.critical {
+  border-color:
+    rgba(255, 48, 73, .68);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(38, 11, 18, .92),
+      rgba(10, 14, 20, .97)
+    );
+}
+
+.dashboard-dynamic-node-icon {
+  grid-row:
+    1 / span 2;
+
+  width: 37px;
+  height: 37px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(46, 151, 225, .27);
+
+  border-radius: 8px;
+
+  background:
+    rgba(20, 91, 139, .12);
+
+  color: #43aaf2;
+}
+
+.dashboard-dynamic-node.critical
+.dashboard-dynamic-node-icon {
+  border-color:
+    rgba(255, 48, 73, .3);
+
+  background:
+    rgba(255, 48, 73, .08);
+
+  color: #ff4059;
+}
+
+.dashboard-dynamic-node strong {
+  overflow: hidden;
+
+  font-size: 11px;
+  line-height: 1.3;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard-dynamic-node span {
+  color: #788697;
+
+  font-size: 8px;
+  text-transform: capitalize;
+}
+
+.dashboard-dynamic-node small {
+  position: absolute;
+  right: 9px;
+  bottom: 7px;
+
+  color: #536171;
+
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dashboard-dynamic-flows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  overflow-x: auto;
+
+  padding:
+    10px
+    3px
+    3px;
+
+  border-top:
+    1px solid
+    rgba(38, 48, 60, .72);
+
+  scrollbar-width: thin;
+}
+
+.dashboard-flow-item {
+  flex: 0 0 auto;
+
+  min-height: 30px;
+  padding:
+    0
+    9px;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  border:
+    1px solid
+    #253240;
+
+  border-radius: 7px;
+
+  background:
+    rgba(8, 14, 20, .9);
+
+  color: #8fa0b1;
+
+  font-size: 8px;
+}
+
+.dashboard-flow-item b {
+  color: #3f9ee2;
+}
+
+.dashboard-flow-item small {
+  color: #5d6b7b;
+
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.dashboard-flow-item.insecure {
+  border-color:
+    rgba(255, 48, 73, .43);
+
+  background:
+    rgba(45, 8, 15, .55);
+}
+
+.dashboard-flow-item.insecure b,
+.dashboard-flow-item.insecure small {
+  color: #ff4059;
+}
+
+@media (max-width: 900px) {
+  .dashboard-dynamic-components {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-dynamic-components {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+/* ==========================================================
+   DYNAMIC REASSESSMENT UPLOAD
+   ========================================================== */
+
+.reassessment-upload-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.reassessment-file-input {
+  display: none;
+}
+
+.reassessment-file-picker {
+  width: min(330px, 34vw);
+  min-height: 42px;
+  padding: 0 13px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  border: 1px solid #283543;
+  border-radius: 8px;
+
+  background: #080e14;
+  color: #d7e0e9;
+
+  cursor: pointer;
+}
+
+.reassessment-file-picker > svg {
+  flex: 0 0 auto;
+  color: #8393a5;
+}
+
+.reassessment-file-picker > span {
+  min-width: 0;
+  flex: 1;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reassessment-file-picker > small {
+  flex: 0 0 auto;
+
+  color: #657487;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.reassessment-success {
+  margin-bottom: 12px;
+}
+
+.run-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .reassessment-platform-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reassessment-upload-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reassessment-file-picker {
+    width: 100%;
+  }
+}
+
+/* ==========================================================
+   DYNAMIC ARCHITECTURE GRAPH LAYOUT FIX
+   ========================================================== */
+
+.architecture-layout {
+  align-items: start !important;
+}
+
+.graph-panel {
+  min-height: 0 !important;
+  align-self: start !important;
+}
+
+.react-flow-shell {
+  height: 520px !important;
+  min-height: 520px !important;
+}
+
+.react-flow__edge.animated path {
+  animation-duration: 1.5s;
+}
+
+@media (max-width: 900px) {
+  .react-flow-shell {
+    height: 460px !important;
+    min-height: 460px !important;
+  }
+}
+
+/* Fill the complete Architecture graph panel */
+.architecture-layout {
+  align-items: stretch !important;
+}
+
+.architecture-layout > .graph-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  align-self: stretch !important;
+  height: 100% !important;
+}
+
+.architecture-layout > .graph-panel > .panel-heading {
+  flex: 0 0 auto;
+}
+
+.architecture-layout > .graph-panel > .react-flow-shell {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 520px !important;
+}
+
+
+/* Architecture graph routing and animated data flows */
+.react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 9 7;
+  animation: dashdraw 0.8s linear infinite;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.zone-item strong {
+  text-transform: none !important;
+}

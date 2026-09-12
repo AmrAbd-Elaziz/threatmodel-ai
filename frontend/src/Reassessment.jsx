@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   FileWarning,
+  FileText,
   LayoutDashboard,
   Network,
   RefreshCcw,
@@ -17,6 +18,8 @@ import {
 import Footer from "./Footer";
 import Sidebar from "./Sidebar";
 import SharedHeader from "./SharedHeader";
+
+import { getCurrentAssessment } from "./assessmentStore";
 
 import "./index.css";
 
@@ -46,14 +49,186 @@ function Reassessment() {
   const [error, setError] = useState("");
 
   const [
+    remediatedFile,
+    setRemediatedFile,
+  ] = useState(null);
+
+  const [
+    reassessmentMessage,
+    setReassessmentMessage,
+  ] = useState("");
+
+  const [
     selectedLifecycle,
     setSelectedLifecycle,
   ] = useState("ALL");
+
+  async function runReassessment() {
+    const baselineReport =
+      getCurrentAssessment();
+
+    if (!baselineReport) {
+      setError(
+        "Run a baseline assessment from the Dashboard first."
+      );
+      return;
+    }
+
+    if (!remediatedFile) {
+      setError(
+        "Select a remediated YAML or JSON file first."
+      );
+      return;
+    }
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      remediatedFile
+    );
+
+    try {
+      setLoading(true);
+      setError("");
+      setReassessmentMessage(
+        "Analyzing remediated architecture…"
+      );
+
+      const uploadResponse = await fetch(
+        `${API_BASE}/api/assessments/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const remediatedReport =
+        await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          typeof remediatedReport.detail ===
+          "string"
+            ? remediatedReport.detail
+            : remediatedReport.detail
+                ?.message ||
+              "Unable to analyze remediated architecture."
+        );
+      }
+
+      const comparisonResponse =
+        await fetch(
+          `${API_BASE}/api/assessments/reassessment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              baseline: baselineReport,
+              remediated:
+                remediatedReport,
+            }),
+          }
+        );
+
+      const comparisonResult =
+        await comparisonResponse.json();
+
+      if (!comparisonResponse.ok) {
+        throw new Error(
+          comparisonResult.detail ||
+          "Unable to compare assessments."
+        );
+      }
+
+      localStorage.setItem(
+        "threatmodel-current-reassessment",
+        JSON.stringify(
+          comparisonResult
+        )
+      );
+
+      localStorage.setItem(
+        "threatmodel-current-assessment",
+        JSON.stringify(
+          remediatedReport
+        )
+      );
+
+      setData(comparisonResult);
+      setCurrentReport(
+        remediatedReport
+      );
+
+      setSelectedLifecycle("ALL");
+
+      setReassessmentMessage(
+        `Reassessment complete: ${
+          comparisonResult
+            .finding_lifecycle
+            ?.Resolved ?? 0
+        } resolved, ${
+          comparisonResult
+            .finding_lifecycle
+            ?.[
+              "Still Open"
+            ] ?? 0
+        } still open.`
+      );
+    } catch (err) {
+      setError(
+        err.message ||
+        "Unable to run reassessment."
+      );
+
+      setReassessmentMessage("");
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   async function loadReassessment() {
     try {
       setLoading(true);
       setError("");
+
+      const currentAssessment =
+        getCurrentAssessment();
+
+      if (currentAssessment) {
+        setCurrentReport(
+          currentAssessment
+        );
+
+        const savedReassessment =
+          localStorage.getItem(
+            "threatmodel-current-reassessment"
+          );
+
+        if (savedReassessment) {
+          try {
+            setData(
+              JSON.parse(
+                savedReassessment
+              )
+            );
+          } catch {
+            localStorage.removeItem(
+              "threatmodel-current-reassessment"
+            );
+
+            setData(null);
+          }
+        } else {
+          setData(null);
+        }
+
+        return;
+      }
 
       const [
         reassessmentResponse,
@@ -137,13 +312,62 @@ function Reassessment() {
             </h1>
           </div>
 
-          <button
-            className="run-button"
-            onClick={loadReassessment}
-          >
-            <RefreshCcw size={17} />
-            Run Assessment
-          </button>
+          <div className="reassessment-upload-actions">
+            <label
+              className="reassessment-file-picker"
+              htmlFor="remediated-file"
+            >
+              <FileText size={17} />
+
+              <span>
+                {remediatedFile?.name ||
+                  "Select remediated file"}
+              </span>
+
+              <small>
+                YAML / YML / JSON
+              </small>
+            </label>
+
+            <input
+              id="remediated-file"
+              className="reassessment-file-input"
+              type="file"
+              accept=".yaml,.yml,.json,application/json,application/x-yaml,text/yaml"
+              onChange={(event) => {
+                setRemediatedFile(
+                  event.target.files?.[0] ||
+                  null
+                );
+
+                setError("");
+                setReassessmentMessage("");
+              }}
+            />
+
+            <button
+              type="button"
+              className="run-button"
+              onClick={runReassessment}
+              disabled={
+                !remediatedFile ||
+                loading
+              }
+            >
+              <RefreshCcw
+                size={17}
+                className={
+                  loading
+                    ? "assessment-spinner"
+                    : ""
+                }
+              />
+
+              {loading
+                ? "Comparing…"
+                : "Run Reassessment"}
+            </button>
+          </div>
         </header>
 
         <section className="architecture-page-hero">
@@ -165,6 +389,12 @@ function Reassessment() {
             CONTINUOUS REVIEW
           </div>
         </section>
+
+        {reassessmentMessage && (
+          <div className="assessment-success-message reassessment-success">
+            {reassessmentMessage}
+          </div>
+        )}
 
         {!loading && !error && currentReport && (
           <section className="reassessment-current-context">
