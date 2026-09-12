@@ -5,6 +5,7 @@
 import json
 import os
 import tempfile
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -29,42 +30,353 @@ st.set_page_config(
 
 
 # ============================================================
-# 3. UI STYLING
+# 3. MODERN SECURITY PRODUCT UI
 # ============================================================
+
+import base64
+
+
+def image_to_base64(path):
+    image_path = Path(path)
+
+    if not image_path.exists():
+        return ""
+
+    return base64.b64encode(
+        image_path.read_bytes()
+    ).decode()
+
+
+logo_b64 = image_to_base64(
+    "assets/threatmodel-logo.png"
+)
 
 st.markdown(
     """
     <style>
+
+    /* ======================================================
+       GLOBAL APPLICATION
+       ====================================================== */
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 85% 0%,
+                rgba(239, 68, 68, 0.07),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 20% 100%,
+                rgba(59, 130, 246, 0.04),
+                transparent 25%
+            ),
+            #07090d;
+        color: #f8fafc;
+    }
+
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
+        max-width: 1600px;
+        padding-top: 1.4rem;
+        padding-bottom: 4rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
     }
 
-    .tm-title {
-        font-size: 2.7rem;
+    header[data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    #MainMenu {
+        visibility: hidden;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    /* ======================================================
+       SIDEBAR
+       ====================================================== */
+
+    section[data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #0a0d12 0%,
+                #080a0e 100%
+            );
+        border-right: 1px solid #1d232d;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        padding-top: 1.2rem;
+    }
+
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #f8fafc;
+    }
+
+    section[data-testid="stSidebar"] label {
+        color: #aeb8c6 !important;
+    }
+
+    /* ======================================================
+       TYPOGRAPHY
+       ====================================================== */
+
+    h1, h2, h3 {
+        letter-spacing: -0.025em;
+    }
+
+    h2 {
+        margin-top: 1.5rem;
+    }
+
+    p {
+        color: #aab4c3;
+    }
+
+    /* ======================================================
+       PRODUCT HEADER
+       ====================================================== */
+
+    .tm-product-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        background:
+            linear-gradient(
+                135deg,
+                rgba(15, 18, 24, 0.96),
+                rgba(8, 10, 14, 0.96)
+            );
+
+        border: 1px solid #202630;
+        border-radius: 18px;
+
+        padding: 18px 22px;
+        margin-bottom: 18px;
+
+        box-shadow:
+            0 18px 50px rgba(0, 0, 0, 0.25);
+    }
+
+    .tm-brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .tm-logo {
+        width: 58px;
+        height: 58px;
+        object-fit: contain;
+
+        filter:
+            drop-shadow(
+                0 0 13px rgba(255, 32, 32, 0.32)
+            );
+    }
+
+    .tm-brand-title {
+        color: #f8fafc;
+        font-size: 1.85rem;
         font-weight: 800;
-        margin-bottom: 0;
+        line-height: 1;
+        margin-bottom: 7px;
     }
 
-    .tm-subtitle {
-        color: #94a3b8;
-        font-size: 1.05rem;
-        margin-bottom: 1.5rem;
+    .tm-ai {
+        color: #ff3131;
     }
 
-    .tm-note {
-        background: #172554;
-        padding: 14px 18px;
+    .tm-brand-tagline {
+        color: #788394;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.19em;
+        text-transform: uppercase;
+    }
+
+    .tm-version {
+        color: #ff5555;
+        border: 1px solid rgba(255, 49, 49, 0.35);
+        background: rgba(255, 49, 49, 0.07);
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+    }
+
+    /* ======================================================
+       HERO
+       ====================================================== */
+
+    .tm-hero {
+        position: relative;
+        overflow: hidden;
+
+        border: 1px solid #202630;
+        border-radius: 18px;
+
+        padding: 27px 30px;
+        margin-bottom: 22px;
+
+        background:
+            linear-gradient(
+                110deg,
+                rgba(14, 17, 23, 0.98),
+                rgba(9, 11, 16, 0.94)
+            );
+    }
+
+    .tm-hero::after {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        right: -130px;
+        top: -170px;
+
+        background: #ef2929;
+        opacity: 0.10;
+        filter: blur(65px);
+        border-radius: 50%;
+    }
+
+    .tm-eyebrow {
+        color: #ff3d3d;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .tm-hero-title {
+        color: #f8fafc;
+        font-size: 2.35rem;
+        line-height: 1.08;
+        font-weight: 800;
+        margin-bottom: 11px;
+    }
+
+    .tm-hero-description {
+        max-width: 900px;
+        color: #909baa;
+        font-size: 0.96rem;
+        line-height: 1.7;
+    }
+
+    /* ======================================================
+       STREAMLIT METRIC CARDS
+       ====================================================== */
+
+    div[data-testid="stMetric"] {
+        background:
+            linear-gradient(
+                145deg,
+                #10141b,
+                #0b0e13
+            );
+
+        border: 1px solid #202630;
+        border-radius: 15px;
+
+        padding: 17px 18px;
+
+        box-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.16);
+
+        min-height: 105px;
+    }
+
+    div[data-testid="stMetric"]:hover {
+        border-color: #343c49;
+        transform: translateY(-1px);
+        transition: 0.2s ease;
+    }
+
+    div[data-testid="stMetricLabel"] {
+        color: #8d98a8;
+    }
+
+    div[data-testid="stMetricValue"] {
+        color: #f8fafc;
+        font-weight: 750;
+    }
+
+    /* ======================================================
+       DATAFRAMES / PANELS
+       ====================================================== */
+
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #202630;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    div[data-testid="stExpander"] {
+        background: #0d1117;
+        border: 1px solid #202630;
+        border-radius: 13px;
+    }
+
+    /* ======================================================
+       ALERTS
+       ====================================================== */
+
+    div[data-testid="stAlert"] {
+        border-radius: 13px;
+        border: 1px solid #262d38;
+    }
+
+    /* ======================================================
+       DIVIDERS
+       ====================================================== */
+
+    hr {
+        border-color: #1d232c !important;
+        margin-top: 2rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    /* ======================================================
+       BUTTONS
+       ====================================================== */
+
+    .stButton > button {
         border-radius: 10px;
-        margin-bottom: 20px;
+        border: 1px solid #343c48;
+        background: #10141a;
+        color: #f8fafc;
     }
 
-    .risk-card {
-        border: 1px solid #334155;
-        border-radius: 12px;
-        padding: 14px;
-        margin-bottom: 12px;
+    .stButton > button:hover {
+        border-color: #ef4444;
+        color: #ffffff;
     }
+
+    /* ======================================================
+       DOWNLOAD BUTTONS
+       ====================================================== */
+
+    .stDownloadButton > button {
+        border-radius: 10px;
+        border: 1px solid #343c48;
+        background: #10141a;
+        color: #f8fafc;
+    }
+
+    .stDownloadButton > button:hover {
+        border-color: #ef4444;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -72,33 +384,63 @@ st.markdown(
 
 
 # ============================================================
-# 4. APPLICATION HEADER
+# 4. PRODUCT HEADER
 # ============================================================
 
-st.markdown(
-    '<div class="tm-title">🧠 ThreatModel AI</div>',
-    unsafe_allow_html=True,
+logo_html = ""
+
+if logo_b64:
+    logo_html = (
+        '<img class="tm-logo" '
+        f'src="data:image/png;base64,{logo_b64}" '
+        'alt="ThreatModel AI Logo">'
+    )
+
+product_header_html = (
+    '<div class="tm-product-header">'
+    '<div class="tm-brand">'
+    f'{logo_html}'
+    '<div>'
+    '<div class="tm-brand-title">'
+    'ThreatModel<span class="tm-ai">AI</span>'
+    '</div>'
+    '<div class="tm-brand-tagline">'
+    'Model • Analyze • Secure • Continuously'
+    '</div>'
+    '</div>'
+    '</div>'
+    '<div class="tm-version">'
+    'Security Engineering Platform · V2'
+    '</div>'
+    '</div>'
 )
 
 st.markdown(
-    """
-    <div class="tm-subtitle">
-    Architecture Threat Modeling, STRIDE Analysis,
-    Risk Prioritization & Security Controls
-    </div>
-    """,
+    product_header_html,
     unsafe_allow_html=True,
 )
 
+
+hero_html = (
+    '<div class="tm-hero">'
+    '<div class="tm-eyebrow">'
+    'Architecture Security Intelligence'
+    '</div>'
+    '<div class="tm-hero-title">'
+    'Turn Architecture Into '
+    '<span class="tm-ai">Security Decisions.</span>'
+    '</div>'
+    '<div class="tm-hero-description">'
+    'Architecture-driven threat modeling, '
+    'attack path analysis, control assessment, '
+    'security findings and continuous reassessment '
+    'in one explainable workflow.'
+    '</div>'
+    '</div>'
+)
+
 st.markdown(
-    """
-    <div class="tm-note">
-    ThreatModel AI performs deterministic architecture analysis.
-    Projected residual risk assumes recommended controls are
-    implemented effectively and does not represent validated
-    production control effectiveness.
-    </div>
-    """,
+    hero_html,
     unsafe_allow_html=True,
 )
 
