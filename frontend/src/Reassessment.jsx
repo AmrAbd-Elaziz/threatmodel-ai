@@ -82,6 +82,12 @@ function Reassessment() {
       return;
     }
 
+    setError("");
+    setReassessmentMessage(
+      "Static portfolio demo: custom reassessment is available in the full Docker/FastAPI version."
+    );
+    return;
+
     const formData = new FormData();
 
     formData.append(

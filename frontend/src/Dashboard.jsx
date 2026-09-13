@@ -143,6 +143,12 @@ const [report, setReport] = useState(null);
       return;
     }
 
+    setError("");
+    setAssessmentMessage(
+      "Static portfolio demo: custom file analysis is available in the full Docker/FastAPI version."
+    );
+    return;
+
     const formData = new FormData();
     formData.append(
       "file",
