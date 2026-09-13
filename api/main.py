@@ -5,8 +5,9 @@ import yaml
 from pydantic import ValidationError
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from core.service import analyze_architecture
 from core.reporting import generate_html_report
@@ -511,3 +512,26 @@ async def upload_architecture_assessment(
 
     return report
 
+
+# Serve the compiled React application from the same domain as the API.
+FRONTEND_DIST = (
+    Path(__file__).resolve().parent.parent
+    / "frontend"
+    / "dist"
+)
+
+app.mount(
+    "/assets",
+    StaticFiles(directory=FRONTEND_DIST / "assets"),
+    name="frontend-assets",
+)
+
+
+@app.get(
+    "/{full_path:path}",
+    include_in_schema=False,
+)
+def serve_frontend(full_path: str):
+    return FileResponse(
+        FRONTEND_DIST / "index.html"
+    )
