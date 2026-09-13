@@ -532,6 +532,9 @@ app.mount(
     include_in_schema=False,
 )
 def serve_frontend(full_path: str):
-    return FileResponse(
-        FRONTEND_DIST / "index.html"
-    )
+    requested_file = (FRONTEND_DIST / full_path).resolve()
+
+    if full_path and FRONTEND_DIST in requested_file.parents and requested_file.is_file():
+        return FileResponse(requested_file)
+
+    return FileResponse(FRONTEND_DIST / "index.html")
