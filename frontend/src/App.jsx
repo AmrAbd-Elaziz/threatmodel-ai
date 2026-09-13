@@ -1,5 +1,5 @@
 import {
-  BrowserRouter,
+  HashRouter,
   Route,
   Routes,
 } from "react-router-dom";
@@ -15,7 +15,7 @@ import Reports from "./Reports";
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route
           path="/"
@@ -57,7 +57,7 @@ function App() {
           element={<Reports />}
         />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

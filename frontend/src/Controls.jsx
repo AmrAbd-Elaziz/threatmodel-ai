@@ -1,3 +1,4 @@
+import { DEMO_ENDPOINTS } from "./demoApi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
@@ -66,7 +67,7 @@ function Controls() {
       }
 
       const response = await fetch(
-        `${API_BASE}/api/demo/banking`
+        DEMO_ENDPOINTS.banking
       );
 
       if (!response.ok) {

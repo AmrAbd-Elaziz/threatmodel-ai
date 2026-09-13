@@ -118,7 +118,7 @@ function Sidebar() {
         }
       >
         <img
-          src="/threatmodel-symbol.png"
+          src={`${import.meta.env.BASE_URL}threatmodel-symbol.png`}
           alt=""
         />
       </button>
@@ -163,7 +163,7 @@ function Sidebar() {
 
       <div className="sidebar-security-card">
         <img
-          src="/sidebar-security-card.png"
+          src={`${import.meta.env.BASE_URL}sidebar-security-card.png`}
           alt="A more secure tomorrow starts with a clearer view today."
         />
       </div>

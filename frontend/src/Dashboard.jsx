@@ -1,3 +1,4 @@
+import { DEMO_ENDPOINTS } from "./demoApi";
 import {
   useEffect,
   useMemo,
@@ -240,10 +241,10 @@ const [report, setReport] = useState(null);
         remediatedResponse,
       ] = await Promise.all([
         fetch(
-          `${API_BASE}/api/demo/banking`
+          DEMO_ENDPOINTS.banking
         ),
         fetch(
-          `${API_BASE}/api/demo/banking/remediated`
+          DEMO_ENDPOINTS.bankingRemediated
         ),
       ]);
 

@@ -1,3 +1,4 @@
+import { DEMO_ENDPOINTS } from "./demoApi";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -136,10 +137,10 @@ function Reports() {
         reassessmentResponse,
       ] = await Promise.all([
         fetch(
-          `${API_BASE}/api/demo/banking`
+          DEMO_ENDPOINTS.banking
         ),
         fetch(
-          `${API_BASE}/api/demo/banking/reassessment`
+          DEMO_ENDPOINTS.reassessment
         ),
       ]);
 

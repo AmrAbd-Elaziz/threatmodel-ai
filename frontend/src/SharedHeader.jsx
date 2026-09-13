@@ -5,7 +5,7 @@ function SharedHeader() {
       <div className="shared-header-brand">
 
         <img
-          src="/threatmodel-symbol.png"
+          src={`${import.meta.env.BASE_URL}threatmodel-symbol.png`}
           alt="ThreatModel AI"
         />
 
